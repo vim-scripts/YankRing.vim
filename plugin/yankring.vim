@@ -1,8 +1,8 @@
 " yankring.vim - Yank / Delete Ring for Vim
 " ---------------------------------------------------------------
-" Version:  1.4
+" Version:  1.5
 " Authors:  David Fishburn <fishburn@ianywhere.com>
-" Last Modified: Fri Mar 25 2005 11:14:00 PM
+" Last Modified: Tue Mar 29 2005 3:06:25 PM
 " Script:   http://www.vim.org/scripts/script.php?script_id=1234
 " Based On: Mocked up version by Yegappan Lakshmanan
 "           http://groups.yahoo.com/group/vim/post?act=reply&messageNum=34406
@@ -18,7 +18,7 @@ if v:version < 602
   finish
 endif
 
-let loaded_yankring = 14
+let loaded_yankring = 15
 
 " Allow the user to override the # of yanks/deletes recorded
 if !exists('g:yankring_max_history')
@@ -40,6 +40,20 @@ endif
 " Specify max display length for each element for YRShow
 if !exists('g:yankring_max_display')
     let g:yankring_max_display = 0
+endif
+
+" Controls whether the . operator will repeat yank operations
+" The default is based on cpoptions: |cpo-y|
+"	y	A yank command can be redone with ".".
+if !exists('g:yankring_dot_repeat_yank')
+    let g:yankring_dot_repeat_yank = (&cpoptions=~'y'?1:0)
+endif
+
+" Only adds unique items to the yankring.
+" If the item already exists, that element is set as the
+" top of the yankring.
+if !exists('g:yankring_ignore_duplicate')
+    let g:yankring_ignore_duplicate = 1
 endif
 
 " Allow the user to specify what characters to use for the mappings.
@@ -66,6 +80,14 @@ endif
 
 if !exists('g:yankring_paste_n_akey')
     let g:yankring_paste_n_akey = 'p'
+endif
+
+if !exists('g:yankring_paste_v_bkey')
+    let g:yankring_paste_v_bkey = 'P'
+endif
+
+if !exists('g:yankring_paste_v_akey')
+    let g:yankring_paste_v_akey = 'p'
 endif
 
 if !exists('g:yankring_replace_n_pkey')
@@ -297,6 +319,10 @@ function! s:YRClear()
     let s:yr_prev_vis_lend    = 0
     let s:yr_prev_vis_cstart  = 0
     let s:yr_prev_vis_cend    = 0
+
+    " This is used to determine if the visual selection should be
+    " reset prior to issuing the YRReplace
+    let s:yr_prev_vis_mode    = 0
 endfunction
  
 
@@ -394,6 +420,23 @@ endfunction
 " Adds this value to the yankring.
 function! s:YRRecord(value) 
 
+    if g:yankring_ignore_duplicate == 1
+        " Ensure the element is not already in the yankring
+        let iter = s:yr_count
+
+        let elem = s:yr_paste_idx
+        " let iter = s:yr_count
+        while iter > 0
+            if getreg(a:value) == s:yr_elem_{elem}
+                exec "YRSetTop ".elem
+                " echomsg "YR: Same as element: ".elem
+                return
+            endif
+            let iter = iter - 1
+            let elem = s:YRGetNextElem(elem, -1)
+        endwhile
+    endif
+
     let s:yr_elem_{s:yr_next_idx}      = getreg(a:value)
     let s:yr_elem_type_{s:yr_next_idx} = getregtype(a:value)
     let s:yr_paste_idx                 = s:yr_next_idx
@@ -427,7 +470,8 @@ function! s:YRSetPrevOP(op_code, count, reg)
     let s:yr_prev_chg_cstart  = col("'[")
     let s:yr_prev_chg_cend    = col("']")
 
-    " TODO
+    " If storing the last change position (using '[, '])
+    " is not good enough, then another option is to:
     " Use :redir on the :changes command
     " and grab the last item.  Store this value
     " and compare it is YRDoRepeat.
@@ -457,6 +501,15 @@ function! s:YRDoRepeat()
                 \ s:yr_prev_chg_cstart == col("'[") &&
                 \ s:yr_prev_chg_cend   == col("']") 
         let dorepeat = 1
+    endif
+    " If we are going to repeat check to see if the
+    " previous command was a yank operation.  If so determine
+    " if yank operations are allowed to be repeated.
+    if dorepeat == 1 && s:yr_prev_op_code =~ '^y'
+        " This value be default is set based on cpoptions.
+        if g:yankring_dot_repeat_yank == 0
+            let dorepeat = 0
+        endif
     endif
     return dorepeat
 endfunction
@@ -589,7 +642,7 @@ endfunction
 
 " Paste from either the yankring or from a specified register
 " Optionally a count can be provided, so paste the same value 10 times 
-function! s:YRPaste(replace_last_paste_selection, nextvalue, direction) 
+function! s:YRPaste(replace_last_paste_selection, nextvalue, direction, ...) 
     " Disabling the yankring removes the default maps.
     " But there are some maps the user can create on their own, and 
     " these would most likely call this function.  So place an extra
@@ -603,25 +656,29 @@ function! s:YRPaste(replace_last_paste_selection, nextvalue, direction)
     let default_buffer = ((&clipboard=='unnamed')?'*':'"')
     let v_count = v:count
 
+    " Default command mode to normal mode 'n'
+    let cmd_mode = 'n'
+    if a:0 > 0
+        " Change to visual mode, if command executed via
+        " a visual map
+        let cmd_mode = ((a:1 == 'v') ? 'v' : 'n')
+    endif
+
     " User has decided to bypass the yankring and specify a specific 
     " register
     if user_register != default_buffer
         if a:replace_last_paste_selection == 1
-            " Supports this for example -   5p
-            exec "normal! ".
-                    \ (
-                    \ (v_count > 0)?(v_count):'').
-                    \ (a:direction =~ 'b'?
-                    \ (g:yankring_replace_n_pkey):
-                    \ (g:yankring_replace_n_nkey) 
-                    \ )
+            echomsg 'YR: A register cannot be specified in replace mode'
+            return
         else
             exec "normal! ".
-                    \ ((v_count > 0)?(v_count):'').
-                    \ (user_register==default_buffer?'':'"'.user_register).
-                    \ (a:direction =~ 'b'?'P':'p')
+                        \ ((cmd_mode=='n') ? "" : "gv").
+                        \ ((v_count > 0)?(v_count):'').
+                        \ (user_register==default_buffer?'':'"'.user_register).
+                        \ (a:direction =~ 'b'?'P':'p')
         endif
-        let s:yr_paste_dir = a:direction
+        let s:yr_paste_dir     = a:direction
+        let s:yr_prev_vis_mode = ((cmd_mode=='n') ? 0 : 1)
         return
     endif
 
@@ -629,18 +686,26 @@ function! s:YRPaste(replace_last_paste_selection, nextvalue, direction)
     " If the user hits paste compare the contents of the paste register
     " to the current entry in the yankring.  If they are different, lets
     " assume the user wants the contents of the paste register.
-    " So if they pressed yw (yank word) and hit paste, the yankring
+    " So if they pressed [yt ] (yank to space) and hit paste, the yankring
     " would not have the word in it, so assume they want the word pasted.
     if a:replace_last_paste_selection != 1 
         if s:yr_count > 0
             if getreg(default_buffer) != s:yr_elem_{s:yr_paste_idx}
-                exec 'normal! '.(a:direction =~ 'b'?'P':'p')
-                let s:yr_paste_dir = a:direction
+                exec "normal! ".
+                            \ ((cmd_mode=='n') ? "" : "gv").
+                            \ ((v_count > 0)?(v_count):'').
+                            \ (a:direction =~ 'b'?'P':'p')
+                let s:yr_paste_dir     = a:direction
+                let s:yr_prev_vis_mode = ((cmd_mode=='n') ? 0 : 1)
                 return
             endif
         else
-            exec 'normal! '.(a:direction =~ 'b'?'P':'p')
-            let s:yr_paste_dir = a:direction
+            exec "normal! ".
+                        \ ((cmd_mode=='n') ? "" : "gv").
+                        \ ((v_count > 0)?(v_count):'').
+                        \ (a:direction =~ 'b'?'P':'p')
+            let s:yr_paste_dir     = a:direction
+            let s:yr_prev_vis_mode = ((cmd_mode=='n') ? 0 : 1)
             return
         endif
     endif
@@ -678,10 +743,13 @@ function! s:YRPaste(replace_last_paste_selection, nextvalue, direction)
 
         " First undo the previous paste
         exec "normal! u"
+        " Check if the visual selection should be reselected
         " Next paste the correct item from the ring
         " This is done as separate statements since it appeared that if 
         " there was nothing to undo, the paste never happened.
-        exec "normal! ".((s:yr_paste_dir =~ 'b')?'P':'p')
+        exec "normal! ".
+                    \ ((s:yr_prev_vis_mode==0) ? "" : "gv").
+                    \ ((s:yr_paste_dir =~ 'b')?'P':'p')
         call setreg(default_buffer, save_reg, save_reg_type)
         call s:YRSetPrevOP('', '', '')
     else
@@ -694,16 +762,18 @@ function! s:YRPaste(replace_last_paste_selection, nextvalue, direction)
                     \ , s:yr_elem_{s:yr_paste_idx}
                     \ , s:yr_elem_type_{s:yr_paste_idx})
         exec "normal! ".
-                \ (
-                \ ((v_count > 0)?(v_count):'').
-                \ ((a:direction =~ 'b')?'P':'p')
-                \ )
+                    \ ((cmd_mode=='n') ? "" : "gv").
+                    \ (
+                    \ ((v_count > 0)?(v_count):'').
+                    \ ((a:direction =~ 'b')?'P':'p')
+                    \ )
         call setreg(default_buffer, save_reg, save_reg_type)
         call s:YRSetPrevOP(
                     \ ((a:direction =~ 'b')?'P':'p')
                     \ , v_count
                     \ , default_buffer)
-        let s:yr_paste_dir = a:direction
+        let s:yr_paste_dir     = a:direction
+        let s:yr_prev_vis_mode = ((cmd_mode=='n') ? 0 : 1)
     endif
 
 endfunction
@@ -751,6 +821,12 @@ function! YRMapsCreate()
     endif
     if g:yankring_paste_n_akey != ''
         exec 'nnoremap <silent>'.g:yankring_paste_n_akey." :<C-U>YRPaste 'a'<CR>"
+    endif
+    if g:yankring_paste_v_bkey != ''
+        exec 'vnoremap <silent>'.g:yankring_paste_v_bkey." :<C-U>YRPaste 'b', 'v'<CR>"
+    endif
+    if g:yankring_paste_v_akey != ''
+        exec 'vnoremap <silent>'.g:yankring_paste_v_akey." :<C-U>YRPaste 'a', 'v'<CR>"
     endif
     if g:yankring_replace_n_pkey != ''
         exec 'nnoremap <silent>'.g:yankring_replace_n_pkey." :<C-U>YRReplace '-1', 'b'<CR>"
@@ -805,6 +881,12 @@ function! YRMapsDelete()
     endif
     if g:yankring_paste_n_akey != ''
         exec 'nunmap '.g:yankring_paste_n_akey
+    endif
+    if g:yankring_paste_v_bkey != ''
+        exec 'vunmap '.g:yankring_paste_v_bkey
+    endif
+    if g:yankring_paste_v_akey != ''
+        exec 'vunmap '.g:yankring_paste_v_akey
     endif
     if g:yankring_replace_n_pkey != ''
         exec 'nunmap '.g:yankring_replace_n_pkey

@@ -43,6 +43,7 @@ For instructions on installing this file, type
        5.8  YRPop.............................: |YRPop-example|
        5.9  Visual modes......................: |yankring-visual-example|
        5.10 Using ranges......................: |YRYankRange-example|
+       5.11 :global...........................: |global-example|
     6. History................................: |yankring-history|
 
 ==============================================================================
@@ -101,6 +102,21 @@ For instructions on installing this file, type
         in the yankring to the fit the size of the Vim window, so that
         a single element does not display over multiple lines. >
             let g:yankring_max_display = 70
+    yankring_dot_repeat_yank
+<       Default: Based on the Vim cpoption setting
+        By default Vim will not repeat (using '.') yanking of text.  This can
+        be controlled via the |'cpoptions'| setting.  The yankring now respects
+        the cpoptions setting, if 'y' is included and you press '.', the
+        previous yank command is repeated and added to the yankring.
+        You can also add this behaviour by setting this in your |vimrc|: >
+            let g:yankring_dot_repeat_yank = 1
+    yankring_ignore_duplicate
+<       Default: 1
+        Duplicates will not be added to the yankring by default.  If a
+        duplicate is found, that element will be moved to the top of the
+        yankring (using YRSetTop).  This can be controlled by setting this in
+        your |vimrc|: >
+            let g:yankring_ignore_duplicate = 0 
     yankring_map_dot
 <       Default: 1
         If the '.' (repeat) command should be mapped by the yankring.
@@ -746,17 +762,41 @@ For instructions on installing this file, type
         :1,4YRYankRange
         :3,$YRDeleteRange
         :YRShow 
+<   
+                                                 *global-example*     
+    Using Vim's |:global| command can be very useful at times.  The example
+    adds all rows (in a buffer) to the yankring if they have a certain
+    phrase: >
+        :g/addme/YRYankCount 'yy'
+<   This is the breakdown for the above command: >
+        :g                  - for each line in the buffer
+        /addme              - check if the string "addme" is in the line
+        /YRYankCount 'yy'   - Ask the yankring to execute the 'yy' command
     
 
 ==============================================================================
 6. History                                       *yankring-history*
+
+  1.5: March 30, 2005: 
+         NF: The yankring now respects the cpoptions setting, if 'y' is
+             included and you press '.', the previous yank command is executed
+             and added to the yankring.  You can also add this behaviour by
+             setting this in your |vimrc|: >
+                let g:yankring_dot_repeat_yank = 1
+<        NF: Duplicates will not be added to the yankring by default.  If
+             a duplicate is found, the element will be moved to the top
+             of the yankring.  This can be controlled by setting this in 
+             your |vimrc|: >
+                let g:yankring_ignore_duplicate = 0 (1 is default)
+<        BF: Regression from version 1.4, the '.' operator may incorrectly
+             insert garbage.
 
   1.4: March 28, 2005: 
          NF: YRToggle has been updated.  If you toggle the yankring off
              (disable) the maps it creates are removed.  Calling YRToggle
              again will recreate the maps.  This truly disables the yankring,
              where the previous version attempted to do this via code.
-         BF: Using the '.' operator was not corrected replaying operations
+         BF: Using the '.' operator was not correctly replaying operations
              that did not move text in some way (g~t_) changed the case
              of the text but a '.' did not replay it.
          BF: When replacing previously pasted text the yankring did not
