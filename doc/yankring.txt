@@ -1,0 +1,799 @@
+*yankring.txt*      For Vim version 6.2. 
+
+Author:	        David Fishburn                             March 28, 2005
+Version:        1.4
+
+For instructions on installing this file, type
+	:help add-local-help |add-local-help| inside Vim.
+    
+
+==============================================================================
+1. Contents                                      *yankring* *yankring-contents*
+
+    1. Contents...............................: |yankring-contents|
+    2. Description............................: |yankring-description|
+    3. Configuration..........................: |yankring-configure|
+       3.1 Global Variables...................: |yankring-globals|
+       3.2 Default Keys.......................: |yankring-mappings|
+       3.3 Customizing Maps...................: |yankring-custom-maps|
+    4. Commands...............................: |yankring-commands|
+       4.1  YRToggle..........................: |YRToggle|
+       4.2  YRClear...........................: |YRClear|
+       4.3  YRShow............................: |YRShow|
+       4.4  YRSetTop..........................: |YRSetTop|
+       4.5  YRGetElem.........................: |YRGetElem|
+       4.6  YRGetMultiple.....................: |YRGetMultiple|
+       4.7  YRPush............................: |YRPush|
+       4.8  YRPop.............................: |YRPop|
+       4.9  YRYankCount.......................: |YRYankCount|
+       4.10 YRYankRange.......................: |YRYankRange|
+       4.11 YRDeleteRange.....................: |YRDeleteRange|
+       4.12 YRPaste...........................: |YRPaste|
+       4.13 YRReplace.........................: |YRReplace|
+       4.14 YRMapsCreate......................: |YRMapsCreate|
+       4.15 YRMapsDelete......................: |YRMapsDelete|
+    5. Tutorial...............................: |yankring-tutorial|
+       5.1  YRShow............................: |YRShow-example|
+       5.2  YRReplace.........................: |YRReplace-example|
+       5.3  YRPush............................: |YRPush-example|
+       5.4  YRClear...........................: |YRClear-example|
+       5.5  YRSetTop..........................: |YRSetTop-example|
+       5.6  YRGetElem.........................: |YRGetElem-example|
+       5.7  YRGetMultiple.....................: |YRGetMultiple-example|
+       5.8  YRPop.............................: |YRPop-example|
+       5.9  Visual modes......................: |yankring-visual-example|
+       5.10 Using ranges......................: |YRYankRange-example|
+    6. History................................: |yankring-history|
+
+==============================================================================
+2. Description                                   *yankring-description*
+
+ Vim already maintains a list of numbered registers containing the last 9
+ deletes.  These previous deletes can be referenced using [register]p, so 
+ "1p will paste the last delete, "2p the 2nd last delete.  For more
+ information see |quote_number|.
+
+ Vim does not provide any mechanism to reference previous yanked text.  
+ In Emacs this feature is called the "kill ring".
+
+ The yankring plugin allows the user to configure the number of yanked
+ and deleted text.  After text has been pasted, it can be replaced with
+ a previous value from the yankring.
+
+ The plugin can be toggled on and off, and supports:
+    Ranges
+    Registers
+    Counts
+    All visual modes
+ 
+ If you have any suggestions for the improvement of this plugin, see the
+ yankring.vim file for my email address.  Suggestions / bug reports are
+ always welcome.
+
+==============================================================================
+3. Configuration                                 *yankring-configure*
+
+ The yankring allows the user to choose which keys are to be assigned to
+ the various commands.  By default, the yankring chose keys identical
+ with Vim's standard behaviour/keys.  
+
+3.1 Global Variables                             *yankring-globals*
+
+ You can customize the yankring by setting various global variables in
+ your |.vimrc|.
+>
+    yankring_max_history 
+<       Default: 30
+        Controls how many elements to save in the yankring. >
+            let g:yankring_max_history = 30
+    yankring_enabled
+<       Default: 1
+        If you do not want to yankring enabled by default, set this 
+        variable in your |vimrc|. >
+            let g:yankring_enabled = 0  " Disables the yankring
+    yankring_separator  
+<       Default: ,
+        Used to parse yankring_n_keys. >
+            let g:yankring_separator = ','
+    yankring_max_display  
+<       Default: 0
+        When the YRShow command is issued, it will truncate the elements
+        in the yankring to the fit the size of the Vim window, so that
+        a single element does not display over multiple lines. >
+            let g:yankring_max_display = 70
+    yankring_map_dot
+<       Default: 1
+        If the '.' (repeat) command should be mapped by the yankring.
+        Since most of the normal commands yy,dd,dw,... are mapped
+        by the yankring, the . operator will not repeat these.
+        The yankring tracks several of the internal Vim registers 
+        and decides whether an action was the result of the yankring
+        or an action outside of it.  If the previous action was a
+        result of the yankring, it will be executed again.  If it
+        was an action outside of the yankring, it asks Vim to repeat
+        the command. >
+            let g:yankring_map_dot = 1
+<
+3.2 Default Keys                                 *yankring-mappings*
+
+ You can choose to override the default keys by creating these global
+ variables in your |vimrc|.
+>
+    yankring_n_keys
+<       n - normal mode
+        Default: yy,dd,yw,dw,ye,de,yE,dE,yiw,diw,yaw,daw,
+                 y$,d$,Y,D,yG,dG,ygg,dgg
+        Yanks text in normal mode.    
+        Using the yankring_separator, the above list is parsed and 
+        individual mappings are created.  For each of the above normal 
+        commands the yankring will include the text those commands 
+        acted upon.   There are many ways to accomplish the same result 
+        in Vim, if you do not see a common key stroke you regularly use
+        simply add the following to your |vimrc| with the additional 
+        keys you wished mapped.  >
+        let g:yankring_n_keys = 'yy,dd,yw,dw,ye,de,yE,dE,yiw,diw,yaw,daw,y$,d$,Y,D,yG,dG,ygg,dgg'
+    yankring_v_key
+<       v - visual mode
+        Default: y 
+        Yanks visually select text.   >
+    yankring_del_v_key
+<       n - normal mode
+        Default: d 
+        The visually select text is included in the yankring and deleted. >
+    yankring_paste_n_bkey
+<       n - normal mode
+        b - before
+        Default: P
+        The default Vim paste key will retrieve from the yankring.  This 
+        will paste the text BEFORE the current position. 
+        There is a special check to see if the text in the default paste
+        register is the same as what is in the current position of the 
+        yankring.  If it is not, we assume the user used some other 
+        mechanism to yank text (ie yt<character>).  If this is the case
+        we paste the text in the default paste buffer.  Using <C-P> the
+        text can be replaced with the current entry from the yankring.
+        Since there are many ways to do things in Vim, this provides
+        the best integration. >
+    yankring_paste_n_akey
+<       n - normal mode
+        a - after
+        Default: p 
+        The default Vim paste key will retrieve from the yankring.  This 
+        will paste the text AFTER the current position. 
+        There is a special check to see if the text in the default paste
+        register is the same as what is in the current position of the 
+        yankring.  If it is not, we assume the user used some other 
+        mechanism to yank text (ie yt<character>).  If this is the case
+        we paste the text in the default paste buffer.  Using <C-P> the
+        text can be replaced with the current entry from the yankring.
+        Since there are many ways to do things in Vim, this provides
+        the best integration. >
+    yankring_paste_v_key
+<       n - normal mode
+        Default: p
+        This will replace the visually select text with the contents 
+        from the yankring.   See yankring_paste_n_akey for additional
+        details.  >
+    yankring_replace_n_pkey
+<       n - normal mode
+        Default: <C-P>
+        If you wish to cycle through the yankring, replacing the previously
+        pasted text with the previous yanked text you can repeatedly press
+        <C-P> (or whatever keystroke you choose to map it to).  This map
+        moves backwards through the yankring, so you will retrieve your
+        most recent yank.  >
+    yankring_replace_n_nkey
+<       n - normal mode
+        Default: <C-N>
+        If you wish to cycle through the yankring, replacing the previously
+        pasted text with the previous yanked text you can repeatedly press
+        <C-N> (or whatever keystroke you choose to map it to).  This map 
+        moves forwards through the yankring, so you will retrieve your 
+        oldest yank.  But it is also useful if you press <C-P> too many 
+        times, you can cycle in the other direction if you passed the 
+        text you wanted.
+
+3.3 Customizing Maps                             *yankring-custom-maps*
+
+ The yankring plugin uses the yankring_n_keys global variable to create 
+ a number of defaults maps.  The maps are of the form: >
+    nnoremap Y  :<C-U>YRYankCount 'Y'<CR>
+<When capital Y is pressed, the yankring will execute 'Y' and capture the
+ output from Vim.  But there are cases where you do not want the default
+ behaviour of Vim, since you have customized some of these maps.
+
+ In this case, I usually map Y to be |y$|, which makes it consistent with 
+ the |D| and |C| operators.  The way yankring_n_keys works does not allow
+ me to customize this behaviour.  Since many people may like to customize
+ the behaviour of these maps the yankring will check to see if a
+ function called YRRunAfterMaps() exists.  If it does, it will call 
+ this function after it has created the maps.  So in my case, I created
+ the following function in my |vimrc|: >
+    function! YRRunAfterMaps()
+        nnoremap Y   :<C-U>YRYankCount 'y$'<CR>
+    endfunction
+<
+ You can do anything you need in this function.  >
+        nnoremap Y   :<C-U>YRYankCount 'y$'<CR>
+<This line remaps Y (which the user presses) to the YRYankCount command.  The
+ YRYankCount tells Vim to execute y$ instead.
+
+
+4 Commands:                                      *yankring-commands*
+
+ The predefined mappings call some specific commands with special parameters.
+ If you are going to create additional maps, it is important you mirror
+ the same parameters.
+
+
+4.1  YRToggle                                    *YRToggle*
+         Allows you to enable and disable the yankring quickly.  This 
+         command will remove the default maps and recreate them.
+
+         Examples: >
+            :YRToggle    " Toggles it
+            :YRToggle 1  " Enables it
+            :YRToggle 0  " Disables it
+<            
+
+4.2  YRClear                                     *YRClear*
+         Clears all elements from the yankring.
+
+
+4.3  YRShow                                      *YRShow*
+         Similar to |:register|, will display all the entries in the yankring.
+         The element at the top will be the next element pasted from the
+         yankring.
+
+         Examples:  >
+            :YRShow     " Shows all entries in the yankring
+            :YRShow 5   " Shows top 5 entries in the yankring
+
+            --- YankRing ---
+            Elem  Content
+            5     five^@
+            4     four^@
+            3     three^@
+            2     two^@
+            1     one^@
+<    
+
+4.4  YRSetTop                                    *YRSetTop*
+         Allows you to specify which entry in the yankring should be at
+         the top.  This is useful when used with |YRGetMultiple|.
+
+         Examples:  >
+            :YRSetTop 3  " Sets element 3 as the next pasted element
+<            
+     
+4.5  YRGetElem                                   *YRGetElem*
+        This command has two modes.  If no parameters are provided, it 
+        becomes interactive.  It uses YRShow to display the list and 
+        allows you to choose which element to paste.  If a parameter
+        is supplied it will paste that element from the yankring.  If the
+        number specified is outside of the yankring an error is returned.
+        You may want to create a separate mapping for this call. >
+            nnoremap <silent> <Leader>yr :YRGetElem<CR>
+<
+        Examples:
+            Assume there are 10 elements in the yankring and element 6 is 
+            at the top of the ring. >
+            :YRGetElem     " Interactive mode, you choose from a list
+            :YRGetElem 4   " Will paste element 4.
+            :YRGetElem 12  " Will paste element 6.
+            :YRGetElem 99  " Error, invalid choice is reported
+            :YRGetElem 0   " Error, invalid choice is reported
+<
+
+4.6  YRGetMultiple                               *YRGetMultiple*
+        Will paste many elements from the yankring in one command.
+        If the number specified is less than 1, it is assumed you want
+        just the current element pasted.  If the number specified is 
+        greater than the number of elements in the yankring, it is 
+        assumed you want all elements pasted.  See the 
+        |yankring-tutorial| for more examples.
+
+        Examples:
+            Assume there are 10 elements in the yankring and element 6 is 
+            at the top of the ring. >
+            :YRGetMultiple 4   " Will paste elements 6,5,4,3
+            :YRGetMultiple     " Will paste element  6
+            :YRGetMultiple 12  " Will paste elements 6,5,4,3,2,1,10,9,8,7
+            :YRGetMultiple 99  " Will paste elements 6,5,4,3,2,1,10,9,8,7
+            :YRGetMultiple 0   " Will paste element  6
+<
+
+4.7  YRPush                                      *YRPush*
+         Allows the user to "push" additional entries into the yankring.
+         If you yanked text via a key mapping which does not use the 
+         yankring (or there is text on the clipboard) you can use this
+         command to add the text to the yankring.
+
+         Examples: >
+            :YRPush    " Push the "  register's contents 
+            :YRPush *  " Push the *  register's contents (clipboard)
+            :YRPush a  " Push the "a register's contents 
+<            
+
+4.8  YRPop                                       *YRPop*
+         Allows you to pop off the top elements from the yankring.  You 
+         cannot remove elements from within the ring, only the highest 
+         elements.  The command optionally takes one parameter to 
+         specify how many elements to pop.  The default value is 1, only
+         the top most element from the yankring.
+
+         Examples: >
+            :YRPop    " Removes the highest numbered element from the 
+                        yankring
+            :YRPop 5  " Removes the 5 highest numbered elements from the 
+                        yankring
+<            
+
+4.9  YRYankCount                                 *YRYankCount*
+         This command has the most mappings created for it.  If you are 
+         in normal mode and you are not specifying a range, this command
+         will add the text to the yankring.
+
+         The goal of this command is to allow the yankring to be integrated
+         as seamlessly as possible with Vim.  So it supports counts and 
+         registers.  If you create a mapping to it, you must pass as a
+         parameter the action you want Vim to perform.  You could do the 
+         following: >
+            nnoremap \test  :<C-U>YRYankCount 'dd'<CR>
+<        This map is executed when you hit the '\test' keystrokes, but
+         it will actually delete the current line and add it to the 
+         yankring.
+
+         The following are the default mappings: >
+            nnoremap yy  :<C-U>YRYankCount 'yy'<CR>
+            nnoremap dd  :<C-U>YRYankCount 'dd'<CR>
+            nnoremap yw  :<C-U>YRYankCount 'yw'<CR>
+            nnoremap dw  :<C-U>YRYankCount 'dw'<CR>
+            nnoremap ye  :<C-U>YRYankCount 'ye'<CR>
+            nnoremap de  :<C-U>YRYankCount 'de'<CR>
+            nnoremap yiw :<C-U>YRYankCount 'yiw'<CR>
+            nnoremap diw :<C-U>YRYankCount 'diw'<CR>
+            nnoremap Y   :<C-U>YRYankCount 'Y'<CR>
+            nnoremap D   :<C-U>YRYankCount 'D'<CR>
+            nnoremap y$  :<C-U>YRYankCount 'y$'<CR>
+            nnoremap d$  :<C-U>YRYankCount 'd$'<CR>
+            nnoremap yG  :<C-U>YRYankCount 'yG'<CR>
+            nnoremap dG  :<C-U>YRYankCount 'dG'<CR>
+<
+         Examples:
+                yy - Adds the current line to the yankring.
+                dd - Adds the current line to the yankring and deletes it.
+               5yw - Adds 5 words to the yankring.
+              "ade - Deletes the word, and puts it into both the yankring
+                     and the "a register.
+            10"zyy - Places 10 lines into both the yankring and the "z
+                     register.
+         
+         
+4.10 YRYankRange                                 *YRYankRange*
+         This command by default is only called in visual mode.  All
+         visual modes (|characterwise-visual|, |linewise-visual|,
+         |blockwise-visual|) are supported.  Any visually selected text
+         is added to the yankring.  You can also call this command
+         directly using a range.
+
+         Examples:
+            Visual mode
+            -----------
+            Press v (to enter visual mode), highlight want you want, 
+            press y (to yank the selected area).
+            Repeat using V and Control-V.
+            
+            Normal mode
+            -----------
+            :5,20YRYankRange   " Will yank lines 5-20 into the yankring
+            :5,20YRDeleteRange " Will delete lines 5-20 and add them to
+                                 the yankring
+         
+         
+4.11 YRDeleteRange                               *YRDeleteRange*
+         This command is identical to YRYankRange, except the range is
+         also deleted.
+
+
+4.12 YRPaste                                     *YRPaste*
+        This command will paste elements from the yankring.  By default it has
+        been mapped to p and P to match Vim's native key strokes.  The text
+        pasted is exactly what was yanked, including newline characters and 
+        blockwise-visual mode behaviours.  It supports counts and registers.
+
+        Examples:
+            p   " Paste the current element from the yankring after the cursor
+            P   " Paste the current element from the yankring before the cursor
+           5p   " Paste the current element from the yankring after the cursor
+                  5 times
+          "ap   " Ignore the yankring and paste the contents of register "a
+         5"ap   " Ignore the yankring and paste the contents of register "a
+                  5 times
+
+            
+4.13 YRReplace                                   *YRReplace*
+        The purpose of the yankring is to gain access to previously yanked
+        (or deleted) elements.  This command will replace the previously 
+        paste  with a different entry from the yankring.
+        By default, I choose <C-P> (P for previous) to replace the last paste
+        while moving backwards through the yankring.  <C-N> (N for next)
+        replaces the last paste while moving forward through the yankring. 
+
+        Examples:
+            See the |yankring-tutorial| for examples.
+
+            
+4.14 YRMapsCreate                                *YRMapsCreate*
+        This public function is responsible for creating the maps which
+        enable the yankring.  This function is called by the YRToggle 
+        command.
+
+            
+4.15 YRMapsDelete                                *YRMapsDelete*
+        This public function removes the yankring maps and disables
+        the yankring.  This function is called by the YRToggle command.
+
+
+==============================================================================
+5. Tutorial                                      *yankring-tutorial*
+
+ To understand how to use the yankring, the following example should
+ demonstrate the various features.
+
+    Assume we have this buffer: >
+        one
+        two
+        three
+        four
+        five
+<                                                *YRShow-example*     
+     Now yank (yy) each line separately starting at line 1.
+     Display the contents of the yankring. >
+        :YRShow  
+            --- YankRing ---
+            Elem  Content
+            5     five^@
+            4     four^@
+            3     three^@
+            2     two^@
+            1     one^@
+<    Since we yanked the text starting at line 1 and finishing at
+     line 5, the most current yankring element is the last one, the
+     contents of line 5.  "five^@" is displayed, the "^@" is a 
+     newline character (since we issued a "yy").
+                                                 *YRReplace-example*     
+     Now, go to the end of the file and press p.  The resulting
+     buffer appears as: >
+        one
+        two
+        three
+        four
+        five
+        five
+<    Now press <C-P> to move backwards through the yankring, 
+     this results in: >
+        one
+        two
+        three
+        four
+        five
+        four
+<    Now press 2<C-P>.  This would be the same as pressing 
+     <C-P> two times in a row.  This results in: >
+        one
+        two
+        three
+        four
+        five
+        two
+<    Now press <C-N> to move forwards through the yankring, 
+     this results in: >
+        one
+        two
+        three
+        four
+        five
+        three
+<    Display the contents of the yankring. >
+        :YRShow  
+            --- YankRing ---
+            Elem  Content
+            3     three^@
+            2     two^@
+            1     one^@
+            5     five^@
+            4     four^@
+<   Here you can see the order of the elements has changed.  It is a
+    "ring" therefore, it knows where it last pasted an element from
+    and that element is at the start of the ring, moving forwards 
+    and backwards through the ring is relative to this position.
+    
+    Now lets yank some text with a key stroke that has not been 
+    mapped to the yankring.  Place your cursor at the start of 
+    line 4.  Press ytr, yank-to-(to the character r), which yanks
+    the 'fou' letters (no newline character).  Now press p.  Here is
+    the result: >
+        one
+        two
+        three
+        ffouour
+        five
+        three
+<   This is good, even though the keys 'yto' has not been mapped
+    to YRYankCount, the yankring still pasted the most recently 
+    yanked text.  Since the text did not have a newline character
+    the 'fou' was inserted after the 'f'.
+
+    Now replace that previous paste with the current element from
+    the yankring by pressing <C-P>.  This is the result: >
+        one
+        two
+        three
+        four
+        two
+        five
+        three
+<   The 'fou' was replaced with the previous entry in the yankring,
+    which so happened to be the line 'two^@'.  Since it had a 
+    newline character in it (when it was yanked) the newline is
+    included when it is pasted.
+                                                 *YRPush-example*     
+    Assume you need to paste text from the system clipboard, and this 
+    is text you will need routinely.  We can simulate this by running
+    this command: >
+        :let @+ = "From the clipboard\n"
+        :echo @+
+
+<   With the cursor at the start of the line with the word 'five', press p.
+    We still have pasted the 'fou' which is in the default paste buffer. >
+        one
+        two
+        three
+        four
+        two
+        ffouive
+        three
+<   We have the option of getting the text from the clipboard directly
+    with the following. >
+        First undo the previous change - u
+        Next - "+p
+<   The line changes since we bypassed the yankring, and specified
+    which register to get the text from: >
+        four
+        five
+        From the clipboard
+        three
+<   <C-P> replaces this with since we have moved backwards in the yankring: >
+        four
+        five
+        one
+        three
+<   Now add the contents of the clipboard to the yankring: >
+        :YRPush '+'
+<   Move the cursor to the last row 'three' and press p.  The result is: >
+        four
+        five
+        one
+        three
+        From the clipboard
+<   YRPush '+' adds the value of the register '+' to the yankring, but it
+    also adds its contents to the default Vim paste buffer.  So pressing
+    p pasted this text.  By adding a new value to the yankring we have
+    repositioned it which you can see with: >
+        :YRShow
+            --- YankRing ---
+            Elem  Content
+            6     From the clipboard^@
+            5     five^@
+            4     four^@
+            3     three^@
+            2     two^@
+            1     one^@
+<                                                *YRClear-example*     
+    Now we will clear the yankring, and begin over again.   >
+        :YRClear
+<   So starting with the initial buffer, issue a 'yy' on each of the 5 lines.
+    If you run the YRShow command you should see the following: >
+        :YRShow  
+            --- YankRing ---
+            Elem  Content
+            5     five^@
+            4     four^@
+            3     three^@
+            2     two^@
+            1     one^@
+<                                                *YRSetTop-example*     
+    The next time I paste from the yankring, it will paste element 5, since
+    it is at the "top" of the yankring.  You can use the YRSetTop to
+    reposition the yankring.  Assume we: >
+        :YRSetTop 3
+        :YRShow
+            --- YankRing ---
+            Elem  Content
+            3     three^@
+            2     two^@
+            1     one^@
+            5     five^@
+            4     four^@
+<                                                *YRGetElem-example*     
+    Now the next element to be pasted from the yankring with will element 3,
+    the line "three\n".  There are times when you might not know the exact
+    element number you want pasted into Vim, and you do not want to cycle
+    through the yankring to get to it.  YRGetElem is used to specify which
+    element you want to paste, without having to use <C-P> and <C-N> to find
+    it: >
+        :YRGetElem 
+            --- YankRing ---
+            Elem  Content
+            3     three^@
+            2     two^@
+            1     one^@
+            5     five^@
+            4     four^@
+        :Enter # to paste:
+<   Without parameters YRGetElem enters interactive mode.  It uses YRShow
+    to display the yankring, and prompts you to enter the element you want
+    pasted.  You may want to create a separate mapping for this call.  
+    See |YRGetElem| for an example.  If a parameter is supplied, YRGetElem 
+    will paste the element without prompting the user. >
+        :YRGetElem 1
+<   Will paste this line into the buffer: >
+        one
+<   It does not alter what is at the top of the yankring, so if I pressed 'p'
+    it would still paste element 3 next. 
+                                                 *YRGetMultiple-example*     
+    There are times when you need to move through a buffer capturing many
+    different lines (or snippets of code) and eventually want to switch 
+    buffers and paste these elements.  With some advance planning you can do 
+    this without the yankring by issuing commands of the form: >
+        "ayy
+        "Ayy
+<   When specifying the register using UPPERCASE, Vim appends the yanked text
+    to register "a, instead of replacing it.  Many times you forget the
+    advance planning (or didn't even know about this great feature) you can 
+    use the YRGetMultiple command.  It will paste (one after the other) as
+    many elements as you specify. >
+        :YRGetMultiple 4
+<   Will paste the following entries into the buffer: >
+        three
+        two
+        one
+        five
+<   When you issue a YRShow, it just pasted the 4 top entries from the
+    yankring.  YRGetMultiple with no argument will paste just the top entry
+    and YRGetMultiple with a very high number will paste all the entries in
+    the yankring. >
+        :YRGetMultiple
+            three
+        :YRGetMultiple 99
+            three
+            two
+            one
+            five
+            four
+<   YRGetMultiple can also take a !(bang) operator, and an optional
+    second parameter to indicate which position in the yankring to begin
+    pasting elements. >
+        :YRGetMultiple 3,2
+            two
+            one
+            five
+        :YRGetMultiple! 3,2
+            five
+            one
+            two
+<   YRGetMultiple 3,2 means, paste 3 elements from the yankring and start
+    at element 2.  Looking at: >
+        :YRShow
+            --- YankRing ---
+            Elem  Content
+            5     five^@
+            4     four^@
+            3     three^@
+            2     two^@
+            1     one^@
+<   So yanking 3 elements starting at element 2, means 2,1,5, since we wrapped 
+    around to the top of the yankring.  Adding the !(bang) operator indicates
+    to reverse the order the elements are pasted.  This is very useful if you
+    move through a buffer from top to bottom yanking text.  When you paste it
+    using YRGetMultiple, the elements are pasted in LIFO (Last In First Out)
+    order, therefore the elements are reversed.  Using YRGetMultiple! will
+    paste the elements in FIFO (First In First Out) maintaining the order of
+    the original buffer (since you read and yanked from top to bottom).
+                                                 *YRPop-example*     
+    You can remove elements from the top of the yankring with the YRPop
+    command.  It optionally takes one parameter. >
+        :YRPop
+        :YRShow 
+            --- YankRing ---
+            Elem  Content
+            4     four^@
+            3     three^@
+            2     two^@
+            1     one^@
+        :YRPop 3
+        :YRShow 
+            --- YankRing ---
+            Elem  Content
+            1     one^@
+
+<                                                *yankring-visual-example*     
+    There are 3 visual modes and all are supported.  Any visually selected 
+    text is added to the yankring.  You can try the various modes.  
+
+    |characterwise-visual|
+        Go to line 1, press v and move using the cursor keys until you have
+        highlighted some text.  Then press y to yank the visually selected
+        area.  Pressing p with paste the yanked region.
+    
+    |linewise-visual|
+        Go to line 2, press V and move using the cursor keys until you have
+        highlighted some text.  Notice the entire line is selected (including
+        the carriage returns).  Then press y to yank the visually selected
+        area.  Pressing p with paste the yanked region.
+    
+    |blockwise-visual|
+        Go to line 3 column 4, press CTRL-V and move to the right using the
+        cursor keys until you have highlighted some text.  Then press y to
+        yank the visually selected area.  Pressing p with paste the yanked
+        region.  Notice the pasted text retained its blockwise visual
+        characteristics.
+    
+                                                 *YRYankRange-example*     
+    YRYankRange is called during visual modes, but it is also possible to
+    use this via the command line. >
+        :1,4YRYankRange
+        :3,$YRDeleteRange
+        :YRShow 
+    
+
+==============================================================================
+6. History                                       *yankring-history*
+
+  1.4: March 28, 2005: 
+         NF: YRToggle has been updated.  If you toggle the yankring off
+             (disable) the maps it creates are removed.  Calling YRToggle
+             again will recreate the maps.  This truly disables the yankring,
+             where the previous version attempted to do this via code.
+         BF: Using the '.' operator was not corrected replaying operations
+             that did not move text in some way (g~t_) changed the case
+             of the text but a '.' did not replay it.
+         BF: When replacing previously pasted text the yankring did not
+             respect what key was used to paste the text originally.
+             All replaced items were pasted using 'p', even if you had
+             originally pasted the text with 'P'.
+
+  1.3: March 16, 2005: 
+         BF: The '.' operator did not handle the <<, >> shift operator.
+             Pressing '.' would result in the previous yankring operation
+             instead of repeating the shift.
+
+  1.2: March 14, 2005: 
+         NF: Added support for '.' operator to repeat the last change.
+         NF: Changed YRGetElem to show the contents of the yankring
+             and allow you to choose which element you want pasted.
+             It is only interactive if you do not provide a parameter.
+         NF: Added 'ygg,dgg' default maps by extending the yankring_n_keys
+             variable.
+
+  1.1: March 09, 2005: 
+         NF: Added support for the black hole register |quote_|.
+         NF: Custom Maps allows the user to more finely tune the yankring
+             maps to perform whatever action they require.  This function,
+             YRRunAfterMaps(), is run automatically after the yankring 
+             creates it's default mappings.  See |yankring-custom-maps|.
+         NF: Added some more default maps by extending the yankring_n_keys
+             variable.  It now contains:
+                yy,dd,yw,dw,ye,de,yE,dE,yiw,diw,yaw,daw,y$,d$,Y,D,yG,dG
+             NOTE:  You can easily extend these default mappings by 
+             creating this global variable in your |vimrc|, you do not
+             have to wait for the plugin to be updated.
+         NF: Added support for Dr. Chips GetLatestVimScripts plugin.
+         BF: The check for g:yankring_n_keys was incorrect, so it was not
+             possible to override the default maps.
+
+  1.0: March 08, 2005: 
+         NF: Initial release.
+
+vim: ts=4 ft=help tw=78
