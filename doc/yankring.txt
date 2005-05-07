@@ -1,7 +1,7 @@
 *yankring.txt*      For Vim version 6.2. 
 
-Author:	        David Fishburn                             March 28, 2005
-Version:        1.4
+Author:	        David Fishburn                             May 7, 2005
+Version:        1.6
 
 For instructions on installing this file, type
 	:help add-local-help |add-local-help| inside Vim.
@@ -32,6 +32,7 @@ For instructions on installing this file, type
        4.13 YRReplace.........................: |YRReplace|
        4.14 YRMapsCreate......................: |YRMapsCreate|
        4.15 YRMapsDelete......................: |YRMapsDelete|
+       4.16 YRSearch..........................: |YRSearch|
     5. Tutorial...............................: |yankring-tutorial|
        5.1  YRShow............................: |YRShow-example|
        5.2  YRReplace.........................: |YRReplace-example|
@@ -44,6 +45,7 @@ For instructions on installing this file, type
        5.9  Visual modes......................: |yankring-visual-example|
        5.10 Using ranges......................: |YRYankRange-example|
        5.11 :global...........................: |global-example|
+       5.12 YRSearch..........................: |YRSearch-example|
     6. History................................: |yankring-history|
 
 ==============================================================================
@@ -254,6 +256,7 @@ For instructions on installing this file, type
 
 4.2  YRClear                                     *YRClear*
          Clears all elements from the yankring.
+         See also |YRClear-example|.
 
 
 4.3  YRShow                                      *YRShow*
@@ -280,7 +283,8 @@ For instructions on installing this file, type
 
          Examples:  >
             :YRSetTop 3  " Sets element 3 as the next pasted element
-<            
+<           See also |YRSetTop-example|.
+             
      
 4.5  YRGetElem                                   *YRGetElem*
         This command has two modes.  If no parameters are provided, it 
@@ -290,7 +294,8 @@ For instructions on installing this file, type
         number specified is outside of the yankring an error is returned.
         You may want to create a separate mapping for this call. >
             nnoremap <silent> <Leader>yr :YRGetElem<CR>
-<
+<       See also |YRSearch|.
+ 
         Examples:
             Assume there are 10 elements in the yankring and element 6 is 
             at the top of the ring. >
@@ -299,7 +304,8 @@ For instructions on installing this file, type
             :YRGetElem 12  " Will paste element 6.
             :YRGetElem 99  " Error, invalid choice is reported
             :YRGetElem 0   " Error, invalid choice is reported
-<
+<           See also |YRGetElem-example|.
+ 
 
 4.6  YRGetMultiple                               *YRGetMultiple*
         Will paste many elements from the yankring in one command.
@@ -317,7 +323,8 @@ For instructions on installing this file, type
             :YRGetMultiple 12  " Will paste elements 6,5,4,3,2,1,10,9,8,7
             :YRGetMultiple 99  " Will paste elements 6,5,4,3,2,1,10,9,8,7
             :YRGetMultiple 0   " Will paste element  6
-<
+<           See also |YRGetMultiple-example|.
+ 
 
 4.7  YRPush                                      *YRPush*
          Allows the user to "push" additional entries into the yankring.
@@ -329,7 +336,8 @@ For instructions on installing this file, type
             :YRPush    " Push the "  register's contents 
             :YRPush *  " Push the *  register's contents (clipboard)
             :YRPush a  " Push the "a register's contents 
-<            
+<           See also |YRPush-example|.
+             
 
 4.8  YRPop                                       *YRPop*
          Allows you to pop off the top elements from the yankring.  You 
@@ -343,7 +351,8 @@ For instructions on installing this file, type
                         yankring
             :YRPop 5  " Removes the 5 highest numbered elements from the 
                         yankring
-<            
+<           See also |YRPop-example|.
+             
 
 4.9  YRYankCount                                 *YRYankCount*
          This command has the most mappings created for it.  If you are 
@@ -384,6 +393,7 @@ For instructions on installing this file, type
                      and the "a register.
             10"zyy - Places 10 lines into both the yankring and the "z
                      register.
+            See also |yankring-tutorial|.
          
          
 4.10 YRYankRange                                 *YRYankRange*
@@ -401,10 +411,11 @@ For instructions on installing this file, type
             Repeat using V and Control-V.
             
             Normal mode
-            -----------
+            ----------- >
             :5,20YRYankRange   " Will yank lines 5-20 into the yankring
             :5,20YRDeleteRange " Will delete lines 5-20 and add them to
                                  the yankring
+<           See also |YRYankRange-example|.
          
          
 4.11 YRDeleteRange                               *YRDeleteRange*
@@ -426,6 +437,7 @@ For instructions on installing this file, type
           "ap   " Ignore the yankring and paste the contents of register "a
          5"ap   " Ignore the yankring and paste the contents of register "a
                   5 times
+            See also |yankring-tutorial|.
 
             
 4.13 YRReplace                                   *YRReplace*
@@ -449,6 +461,15 @@ For instructions on installing this file, type
 4.15 YRMapsDelete                                *YRMapsDelete*
         This public function removes the yankring maps and disables
         the yankring.  This function is called by the YRToggle command.
+
+            
+4.16 YRSearch                                    *YRSearch*
+        This command is similar to |YRGetElem|.  The command takes
+        one parameter which is a regular expression.  Similar to 
+        YRGetElem, it will display all items in the yankring that match
+        the regular expression.  It is also interactive, and will 
+        prompt you to enter which match you wish pasted.
+        See also |YRSearch-example|.
 
 
 ==============================================================================
@@ -554,6 +575,7 @@ For instructions on installing this file, type
     which so happened to be the line 'two^@'.  Since it had a 
     newline character in it (when it was yanked) the newline is
     included when it is pasted.
+
                                                  *YRPush-example*     
     Assume you need to paste text from the system clipboard, and this 
     is text you will need routinely.  We can simulate this by running
@@ -717,7 +739,50 @@ For instructions on installing this file, type
     order, therefore the elements are reversed.  Using YRGetMultiple! will
     paste the elements in FIFO (First In First Out) maintaining the order of
     the original buffer (since you read and yanked from top to bottom).
-                                                 *YRPop-example*     
+    
+                                                 *YRSearch-example*     
+    You can remove elements from the top of the yankring with the YRPop
+    command.  It optionally takes one parameter. >
+        :YRShow 
+            --- YankRing ---
+            Elem  Content
+            4     Three Mississippi
+            3     Two Mississippi
+            2     One Mississippi
+            1     @", '\\/.*$^~[]' )
+        :YRSearch Mississippi
+            --- YankRing ---
+            Elem  Content
+            4     Three Mississippi
+            3     Two Mississippi
+            2     One Mississippi
+        :Enter # to paste:
+<   Consider some items which require escaping the search string: >
+        :YRSearch @", '\\
+            --- YankRing ---
+            Elem  Content
+            1     @", '\\/.*$^~[]' )
+        :Enter # to paste:
+<   Forward slashes and various other symbols require escapes, in this
+    case the slash was not escaped enough: >
+        :YRSearch @", '\\/
+            --- YankRing ---
+            Elem  Content
+        :Hit ENTER or type command to continue
+<   There are enough escapes this time: >
+        :YRSearch @", '\\\\/
+            --- YankRing ---
+            Elem  Content
+            1     @", '\\/.*$^~[]' )
+        :Enter # to paste:
+<   Period, star, dollar and so on require one slash: >
+        :YRSearch @", '\\\\/\.\*\$\^\~\[\]
+            --- YankRing ---
+            Elem  Content
+            1     @", '\\/.*$^~[]' )
+        :Enter # to paste:
+                                                 
+<                                                *YRPop-example*     
     You can remove elements from the top of the yankring with the YRPop
     command.  It optionally takes one parameter. >
         :YRPop
@@ -772,11 +837,24 @@ For instructions on installing this file, type
         :g                  - for each line in the buffer
         /addme              - check if the string "addme" is in the line
         /YRYankCount 'yy'   - Ask the yankring to execute the 'yy' command
-    
+
 
 ==============================================================================
 6. History                                       *yankring-history*
 
+  1.6: April 20, 2005: 
+         NF: YRSearch is similar to YRGetElem.  Given a regular expression
+             it will interactively display all the elements in the yankring
+             that match the regular expression.  You can enter the number
+             of the element to paste it.  If you have many elements within
+             the yankring, this can help you identify them more easily.
+         NF: Updated the default history size from 30 to 100, which is 
+             partially the reason for the YRSearch command.
+         NF: By default it supports "gp" and "gP", in addition to "p" and "P".
+         NF: Added support for the expression register (:h quote=).  Here
+             is an example of how it is used:
+                "="X"<CR>P
+ 
   1.5: March 30, 2005: 
          NF: The yankring now respects the cpoptions setting, if 'y' is
              included and you press '.', the previous yank command is executed

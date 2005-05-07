@@ -1,8 +1,8 @@
 " yankring.vim - Yank / Delete Ring for Vim
 " ---------------------------------------------------------------
-" Version:  1.5
+" Version:  1.6
 " Authors:  David Fishburn <fishburn@ianywhere.com>
-" Last Modified: Tue Mar 29 2005 3:06:25 PM
+" Last Modified: Sat May 07 2005 9:33:15 PM
 " Script:   http://www.vim.org/scripts/script.php?script_id=1234
 " Based On: Mocked up version by Yegappan Lakshmanan
 "           http://groups.yahoo.com/group/vim/post?act=reply&messageNum=34406
@@ -18,13 +18,13 @@ if v:version < 602
   finish
 endif
 
-let loaded_yankring = 15
+let loaded_yankring = 16
 
 " Allow the user to override the # of yanks/deletes recorded
 if !exists('g:yankring_max_history')
-    let g:yankring_max_history = 30
+    let g:yankring_max_history = 100
 elseif g:yankring_max_history < 0
-    let g:yankring_max_history = 30
+    let g:yankring_max_history = 100
 endif
 
 " Allow the user to specify if the plugin is enabled or not
@@ -64,6 +64,11 @@ endif
 " Whether we sould map the . operator
 if !exists('g:yankring_map_dot')
     let g:yankring_map_dot = 1
+endif
+
+" Whether we sould map the "g" paste operators
+if !exists('g:yankring_paste_using_g')
+    let g:yankring_paste_using_g = 1
 endif
 
 if !exists('g:yankring_v_key')
@@ -139,7 +144,7 @@ function! s:YRShow(...)
         endif
 
         let max_display = ((g:yankring_max_display == 0)?
-                    \ (&columns - 10):
+                    \ (&columns - 11):
                     \ (g:yankring_max_display))
 
         " List is shown in order of replacement
@@ -300,6 +305,78 @@ function! s:YRSetTop(set_top)
 endfunction
  
 
+" Given a regular expression, check each element within
+" the yankring, display only the matching items and prompt
+" the user for which item to paste
+function! s:YRSearch(search_exp) 
+    if s:yr_count == 0
+        echomsg 'YR: yankring is empty'
+    else
+        let iter       = s:yr_count
+        let search_exp = a:search_exp
+
+        let max_display = ((g:yankring_max_display == 0)?
+                    \ (&columns - 10):
+                    \ (g:yankring_max_display))
+
+        " List is shown in order of replacement
+        " assuming using previous yanks
+        echomsg "--- YankRing ---"
+        echomsg "Elem  Content"
+        let elem          = s:yr_paste_idx
+        let valid_choices = ','
+        while iter > 0
+            let v:errmsg = ''
+            if match(s:yr_elem_{elem}, search_exp) > -1
+                let length = strlen(s:yr_elem_{elem})
+                " Fancy trick to align them all regardless of how many
+                " digits the element # is
+                echomsg elem.strpart("      ",0,(6-strlen(elem))).
+                            \ (
+                            \ (length>max_display)?
+                            \ (strpart(s:yr_elem_{elem},0,max_display).
+                            \ '...'):
+                            \ (s:yr_elem_{elem})
+                            \ )
+                let valid_choices = valid_choices . elem . ','
+            endif
+            if v:errmsg != ''
+                " If an error is report due to the regular expression
+                " abort the checks
+                return -1
+            endif
+            let iter = iter - 1
+            let elem = s:YRGetNextElem(elem, -1)
+        endwhile
+
+        if valid_choices != ','
+            let elem = input("Enter # to paste:")
+
+            " Ensure we get only the numeric value (trim it)
+            let elem = matchstr(elem, '\d\+')
+
+            if elem == ''
+                " They most likely pressed enter without entering a value
+                return
+            endif
+
+            if valid_choices =~ ','.elem.','
+                exec 'YRGetElem ' . elem
+            else
+                " User did not choose one of the elements that were found
+                return -1
+            endif
+
+        else
+            echomsg "YR: The pattern [" .
+                        \ search_exp .
+                        \ "] does not match any items in the yankring"
+        endif
+    endif
+
+endfunction
+ 
+
 " Clears the yankring by simply setting the # of items in it to 0.
 " There is no need physically unlet each variable.
 function! s:YRClear()
@@ -315,6 +392,7 @@ function! s:YRClear()
     let s:yr_prev_reg_unnamed = ''
     let s:yr_prev_reg_small   = ''
     let s:yr_prev_reg_insert  = ''
+    let s:yr_prev_reg_expres  = ''
     let s:yr_prev_vis_lstart  = 0
     let s:yr_prev_vis_lend    = 0
     let s:yr_prev_vis_cstart  = 0
@@ -454,6 +532,21 @@ endfunction
 
 
 " Record the operation for the dot operator
+function! s:YRGetReg(reg) 
+    try
+        " Using the try catch block since getreg 
+        " returned E121 in one case for me.
+        " At this point it is unknown why.
+        silent! let value = getreg(a:reg)
+    catch
+        let value = ''
+    endtry
+
+    return value
+endfunction
+
+
+" Record the operation for the dot operator
 function! s:YRSetPrevOP(op_code, count, reg) 
     let s:yr_prev_op_code     = a:op_code
     let s:yr_prev_count       = a:count
@@ -469,6 +562,7 @@ function! s:YRSetPrevOP(op_code, count, reg)
     let s:yr_prev_chg_lend    = line("']")
     let s:yr_prev_chg_cstart  = col("'[")
     let s:yr_prev_chg_cend    = col("']")
+    let s:yr_prev_reg_expres  = s:YRGetReg('=')
 
     " If storing the last change position (using '[, '])
     " is not good enough, then another option is to:
@@ -492,6 +586,7 @@ function! s:YRDoRepeat()
     if s:yr_prev_reg_unnamed == getreg('"') &&
                 \ s:yr_prev_reg_small  == getreg('-') &&
                 \ s:yr_prev_reg_insert == getreg('.') &&
+                \ s:yr_prev_reg_expres == s:YRGetReg('=') &&
                 \ s:yr_prev_vis_lstart == line("'<") &&
                 \ s:yr_prev_vis_lend   == line("'>") &&
                 \ s:yr_prev_vis_cstart == col("'<") &&
@@ -671,11 +766,19 @@ function! s:YRPaste(replace_last_paste_selection, nextvalue, direction, ...)
             echomsg 'YR: A register cannot be specified in replace mode'
             return
         else
+            " Check for the expression register, in this special case
+            " we must copy it's content into the default buffer and paste
+            if user_register == '='
+                let user_register = ''
+                call setreg(default_buffer, s:YRGetReg('=') )
+            else
+                let user_register = '"'.user_register
+            endif
             exec "normal! ".
                         \ ((cmd_mode=='n') ? "" : "gv").
                         \ ((v_count > 0)?(v_count):'').
-                        \ (user_register==default_buffer?'':'"'.user_register).
-                        \ (a:direction =~ 'b'?'P':'p')
+                        \ user_register.
+                        \ a:direction
         endif
         let s:yr_paste_dir     = a:direction
         let s:yr_prev_vis_mode = ((cmd_mode=='n') ? 0 : 1)
@@ -694,7 +797,7 @@ function! s:YRPaste(replace_last_paste_selection, nextvalue, direction, ...)
                 exec "normal! ".
                             \ ((cmd_mode=='n') ? "" : "gv").
                             \ ((v_count > 0)?(v_count):'').
-                            \ (a:direction =~ 'b'?'P':'p')
+                            \ a:direction
                 let s:yr_paste_dir     = a:direction
                 let s:yr_prev_vis_mode = ((cmd_mode=='n') ? 0 : 1)
                 return
@@ -703,7 +806,7 @@ function! s:YRPaste(replace_last_paste_selection, nextvalue, direction, ...)
             exec "normal! ".
                         \ ((cmd_mode=='n') ? "" : "gv").
                         \ ((v_count > 0)?(v_count):'').
-                        \ (a:direction =~ 'b'?'P':'p')
+                        \ a:direction
             let s:yr_paste_dir     = a:direction
             let s:yr_prev_vis_mode = ((cmd_mode=='n') ? 0 : 1)
             return
@@ -765,11 +868,11 @@ function! s:YRPaste(replace_last_paste_selection, nextvalue, direction, ...)
                     \ ((cmd_mode=='n') ? "" : "gv").
                     \ (
                     \ ((v_count > 0)?(v_count):'').
-                    \ ((a:direction =~ 'b')?'P':'p')
+                    \ a:direction
                     \ )
         call setreg(default_buffer, save_reg, save_reg_type)
         call s:YRSetPrevOP(
-                    \ ((a:direction =~ 'b')?'P':'p')
+                    \ a:direction
                     \ , v_count
                     \ , default_buffer)
         let s:yr_paste_dir     = a:direction
@@ -817,22 +920,28 @@ function! YRMapsCreate()
         exec 'vnoremap <silent>'.g:yankring_del_v_key." :YRDeleteRange 'v'<CR>"
     endif
     if g:yankring_paste_n_bkey != ''
-        exec 'nnoremap <silent>'.g:yankring_paste_n_bkey." :<C-U>YRPaste 'b'<CR>"
+        exec 'nnoremap <silent>'.g:yankring_paste_n_bkey." :<C-U>YRPaste 'P'<CR>"
+        if g:yankring_paste_using_g == 1
+            exec 'nnoremap <silent> g'.g:yankring_paste_n_bkey." :<C-U>YRPaste 'gP'<CR>"
+        endif
     endif
     if g:yankring_paste_n_akey != ''
-        exec 'nnoremap <silent>'.g:yankring_paste_n_akey." :<C-U>YRPaste 'a'<CR>"
+        exec 'nnoremap <silent>'.g:yankring_paste_n_akey." :<C-U>YRPaste 'p'<CR>"
+        if g:yankring_paste_using_g == 1
+            exec 'nnoremap <silent> g'.g:yankring_paste_n_akey." :<C-U>YRPaste 'gp'<CR>"
+        endif
     endif
     if g:yankring_paste_v_bkey != ''
-        exec 'vnoremap <silent>'.g:yankring_paste_v_bkey." :<C-U>YRPaste 'b', 'v'<CR>"
+        exec 'vnoremap <silent>'.g:yankring_paste_v_bkey." :<C-U>YRPaste 'P', 'v'<CR>"
     endif
     if g:yankring_paste_v_akey != ''
-        exec 'vnoremap <silent>'.g:yankring_paste_v_akey." :<C-U>YRPaste 'a', 'v'<CR>"
+        exec 'vnoremap <silent>'.g:yankring_paste_v_akey." :<C-U>YRPaste 'p', 'v'<CR>"
     endif
     if g:yankring_replace_n_pkey != ''
-        exec 'nnoremap <silent>'.g:yankring_replace_n_pkey." :<C-U>YRReplace '-1', 'b'<CR>"
+        exec 'nnoremap <silent>'.g:yankring_replace_n_pkey." :<C-U>YRReplace '-1', 'P'<CR>"
     endif
     if g:yankring_replace_n_nkey != ''
-        exec 'nnoremap <silent>'.g:yankring_replace_n_nkey." :<C-U>YRReplace '1', 'a'<CR>"
+        exec 'nnoremap <silent>'.g:yankring_replace_n_nkey." :<C-U>YRReplace '1', 'p'<CR>"
     endif
 
     let g:yankring_enabled = 1
@@ -900,19 +1009,20 @@ endfunction
 
 
 " Public commands
-command! -count -register -nargs=* YRYankCount   call s:YRYankCount(<args>)
-command! -range -bang     -nargs=? YRYankRange   <line1>,<line2>call s:YRYankRange(<bang>0, <args>)
-command! -range -bang     -nargs=? YRDeleteRange <line1>,<line2>call s:YRYankRange(<bang>1, <args>)
-command! -count -register -nargs=* YRPaste       call s:YRPaste(0,1,<args>)
-command! -count -register -nargs=* YRReplace     call s:YRPaste(1,<args>)
-command!        -register -nargs=? YRPush        call s:YRPush(<args>)
-command!                  -nargs=? YRPop         call s:YRPop(<args>)
-command!                  -nargs=? YRToggle      call s:YRToggle(<args>)
-command!                  -nargs=? YRShow        call s:YRShow(<args>)
 command!                           YRClear       call s:YRClear()
+command! -range -bang     -nargs=? YRDeleteRange <line1>,<line2>call s:YRYankRange(<bang>1, <args>)
 command!                  -nargs=? YRGetElem     call s:YRGetElem(<args>)
 command!        -bang     -nargs=? YRGetMultiple call s:YRGetMultiple(<bang>0, <args>)
+command! -count -register -nargs=* YRPaste       call s:YRPaste(0,1,<args>)
+command!                  -nargs=? YRPop         call s:YRPop(<args>)
+command!        -register -nargs=? YRPush        call s:YRPush(<args>)
+command! -count -register -nargs=* YRReplace     call s:YRPaste(1,<args>)
+command!                  -nargs=1 YRSearch      call s:YRSearch(<q-args>)
 command!                  -nargs=1 YRSetTop      call s:YRSetTop(<args>)
+command!                  -nargs=? YRShow        call s:YRShow(<args>)
+command!                  -nargs=? YRToggle      call s:YRToggle(<args>)
+command! -count -register -nargs=* YRYankCount   call s:YRYankCount(<args>)
+command! -range -bang     -nargs=? YRYankRange   <line1>,<line2>call s:YRYankRange(<bang>0, <args>)
 
 " Initialize YankRing
 call s:YRClear()
@@ -923,6 +1033,7 @@ if g:yankring_enabled == 1
 endif
 
 if exists('*YRRunAfterMaps') 
+    " This will allow you to override the default maps if necessary
     call YRRunAfterMaps()
 endif
 
