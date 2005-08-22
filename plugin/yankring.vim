@@ -2,7 +2,7 @@
 " ---------------------------------------------------------------
 " Version:  2.0
 " Authors:  David Fishburn <fishburn@ianywhere.com>
-" Last Modified: Sat Aug 20 2005 9:33:10 AM
+" Last Modified: Mon Aug 22 2005 10:23:30 AM
 " Script:   http://www.vim.org/scripts/script.php?script_id=1234
 " Based On: Mocked up version by Yegappan Lakshmanan
 "           http://groups.yahoo.com/group/vim/post?act=reply&messageNum=34406
@@ -469,7 +469,7 @@ endfunction
 " Clears the yankring by simply setting the # of items in it to 0.
 " There is no need physically unlet each variable.
 function! s:YRClear()
-    let s:yr_next_idx         = 0
+    let s:yr_next_idx         = 1
     let s:yr_last_paste_idx   = 0
     let s:yr_count            = 0
     let s:yr_paste_dir        = 'p'
