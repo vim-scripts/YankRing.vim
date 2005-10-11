@@ -96,11 +96,10 @@ your |.vimrc|.
         Used to parse yankring_n_keys. >
             let g:yankring_separator = ','
     yankring_max_display  
-<       Default: 0
-        When the YRShow command is issued, it will truncate the elements
-        in the yankring to the fit the size of the Vim window, so that
-        a single element does not display over multiple lines.  The default
-        value is 500. >
+<       Default: 500
+        When the yankring window is opened, each element is displayed on a
+        separate line.  Since each yank could be very large, the display of
+        the element is limited to the above default.  >
             let g:yankring_max_display = 70
     yankring_dot_repeat_yank
 <       Default: Based on the Vim cpoption setting
@@ -188,6 +187,17 @@ your |.vimrc|.
         increase the size of the window by this number of columns.  Pressing
         [<space>] again will toggle it back to the original size.  >
             let g:yankring_window_increment = 50
+    yankring_manage_numbered_reg
+<       Default: 0
+        Vim already maintains a list of numbered registers containing the last
+        yanked item and the previous 9 deletes.  These items can be referenced
+        using [register]p, so "0p will paste the last yank, "1p will paste the
+        last delete, "2p the 2nd last delete.  For more information see
+        |quote_number|.
+        If you wish the yankring to maintain these numbered registers so 
+        the top 10 elements in the yankring are in the numbered reqisters 0-9
+        you can put the following in your |vimrc| >
+            let g:yankring_manage_numbered_reg = 1
 
 <
 3.2 Default Keys                                 *yankring-mappings*
@@ -939,12 +949,21 @@ mapping: >
 ==============================================================================
 7. History                                       *yankring-history*
 
+  2.1: October 11, 2005: 
+         NF: Added the ability for the yankring to override Vim's numbered 
+             registers.  Instead of the numbered registers holding the last
+             yanked value, and the 9 previous deletes, they will now reflect
+             the top 10 items in the yankring.  This allows you to reference
+             them directly with "5p.
+
   2.0: August 20, 2005: 
-         NF: Added a "GUI" to service the yankring.  If YRShow or YRSearch
-             is used, a split buffer is opened which displays all the 
-			 elements in the yankring.  There are a number of maps
-			 that allow you to interact with the contents.  The window can be
-             positioned vertically or horizontally.  
+         NF: Much improved usability, the yankring now has a "GUI" to service 
+             the yankring.  If YRShow or YRSearch is used, a split buffer is
+             opened which displays all the elements in the yankring.  There
+             are a number of maps that allow you to interact with the
+             contents.  The window can be positioned vertically or
+             horizontally as well as being sized all through options 
+             specified in your vimrc.
 	     NF: YRPop can now delete any items from the yankring, rather 
 		     that just from the top.
 	     NF: YRSetTop has been removed, it is no longer required as the

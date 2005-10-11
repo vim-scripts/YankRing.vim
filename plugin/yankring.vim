@@ -1,8 +1,8 @@
 " yankring.vim - Yank / Delete Ring for Vim
 " ---------------------------------------------------------------
-" Version:  2.0
+" Version:  2.1
 " Authors:  David Fishburn <fishburn@ianywhere.com>
-" Last Modified: Mon Aug 22 2005 10:23:30 AM
+" Last Modified: Tue Oct 11 2005 9:42:48 PM
 " Script:   http://www.vim.org/scripts/script.php?script_id=1234
 " Based On: Mocked up version by Yegappan Lakshmanan
 "           http://groups.yahoo.com/group/vim/post?act=reply&messageNum=34406
@@ -18,7 +18,7 @@ if v:version < 602
   finish
 endif
 
-let loaded_yankring = 20
+let loaded_yankring = 21
 
 " Allow the user to override the # of yanks/deletes recorded
 if !exists('g:yankring_max_history')
@@ -96,6 +96,15 @@ endif
 " top of the yankring.
 if !exists('g:yankring_ignore_duplicate')
     let g:yankring_ignore_duplicate = 1
+endif
+
+" Vim automatically manages the numbered registers:
+" 0   - last yanked text
+" 1-9 - last deleted items
+" If this option is turned on, the yankring will manage the 
+" values in them.
+if !exists('g:yankring_manage_numbered_reg')
+    let g:yankring_manage_numbered_reg = 0
 endif
 
 " Allow the user to specify what characters to use for the mappings.
@@ -579,6 +588,11 @@ function! s:YRRecord(value)
 
     " If the yankring window is open, refresh it
     call s:YRWindowUpdate()
+
+    " Manage the numbered registers
+    if g:yankring_manage_numbered_reg == 1
+        call s:YRSetNumberedReg()
+    endif
 endfunction
 
 
@@ -646,6 +660,25 @@ function! s:YRDoRepeat()
 endfunction
 
 
+" Manages the Vim's numbered registers
+function! s:YRSetNumberedReg() 
+
+    let i = 1
+
+    while i <= 10
+        if i > s:yr_count
+            break
+        endif
+
+        call setreg( (i-1)
+                    \ , s:YRGetValElemNbr(i,'v')
+                    \ , s:YRGetValElemNbr(i,'t')
+                    \ )
+        let i = i + 1
+    endwhile
+endfunction
+
+
 " This internal function will add and subtract values from a starting
 " point and return the correct element number.  It takes into account
 " the circular nature of the yankring.
@@ -653,18 +686,25 @@ function! s:YRGetNextElem(start, iter)
 
     let needed_elem = a:start + a:iter
 
+    " The yankring is a ring, so if an element is
+    " requested beyond the number of elements, we
+    " must wrap around the ring.
     if needed_elem > s:yr_count
-        " The yankring is a ring, so if an element is
-        " requested beyond the number of elements, we
-        " must wrap around the ring.
         let needed_elem = needed_elem % s:yr_count
     endif
 
-    if needed_elem < 1
-        " The yankring is a ring, so if an element is
-        " requested beyond the number of elements, we
-        " must wrap around the ring.
-        " let needed_elem = s:yr_count + needed_elem + 1
+    if needed_elem == 0
+        " Can happen at the end or beginning of the ring
+        if a:iter == -1
+            " Wrap to the bottom of the ring
+            let needed_elem = s:yr_count
+        else
+            " Wrap to the top of the ring
+            let needed_elem = 1
+        endif
+    elseif needed_elem < 1
+        " As we step backwards through the ring we could ask for a negative
+        " value, this will wrap it around to the end
         let needed_elem = s:yr_count
     endif
 
@@ -835,6 +875,12 @@ function! s:YRPaste(replace_last_paste_selection, nextvalue, direction, ...)
     if a:replace_last_paste_selection != 1 
         if s:yr_count > 0
             if getreg(default_buffer) != s:YRGetValElemNbr(1,'v')
+                " The user has performed a yank / delete operation
+                " outside of the yankring maps.  First, add this 
+                " value to the yankring.
+                call s:YRRecord(default_buffer)
+                " Now, use the most recently yanked text, rather than the
+                " value from the yankring.
                 exec "normal! ".
                             \ ((cmd_mode=='n') ? "" : "gv").
                             \ ((v_count > 0)?(v_count):'').
@@ -888,7 +934,7 @@ function! s:YRPaste(replace_last_paste_selection, nextvalue, direction, ...)
 
         let save_reg            = getreg(default_buffer)
         let save_reg_type       = getregtype(default_buffer)
-        call setreg(default_buffer
+        call setreg( default_buffer
                     \ , s:YRGetValElemNbr(s:yr_last_paste_idx,'v')
                     \ , s:YRGetValElemNbr(s:yr_last_paste_idx,'t')
                     \ )
@@ -901,7 +947,7 @@ function! s:YRPaste(replace_last_paste_selection, nextvalue, direction, ...)
         " there was nothing to undo, the paste never happened.
         exec "normal! ".
                     \ ((s:yr_prev_vis_mode==0) ? "" : "gv").
-                    \ ((s:yr_paste_dir =~ 'b')?'P':'p')
+                    \ s:yr_paste_dir
         call setreg(default_buffer, save_reg, save_reg_type)
         call s:YRSetPrevOP('', '', '')
     else
@@ -1512,24 +1558,24 @@ function! s:YRWindowOpen(results)
     " other buffers.
     mapclear <buffer>
     " Create a mapping to act upon the yankring
-    nnoremap <buffer> <silent> <2-LeftMouse> :call <SID>YRWindowAction('p')<CR>
-    nnoremap <buffer> <silent> <CR>          :call <SID>YRWindowAction('p')<CR>
-    vnoremap <buffer> <silent> <CR>          :call <SID>YRWindowAction('p')<CR>
-    nnoremap <buffer> <silent> p             :call <SID>YRWindowAction('p')<CR>
-    vnoremap <buffer> <silent> p             :call <SID>YRWindowAction('p')<CR>
-    nnoremap <buffer> <silent> P             :call <SID>YRWindowAction('P')<CR>
-    vnoremap <buffer> <silent> P             :call <SID>YRWindowAction('P')<CR>
-    nnoremap <buffer> <silent> gp            :call <SID>YRWindowAction('gp')<CR>
-    vnoremap <buffer> <silent> gp            :call <SID>YRWindowAction('gp')<CR>
-    nnoremap <buffer> <silent> gP            :call <SID>YRWindowAction('gP')<CR>
-    vnoremap <buffer> <silent> gP            :call <SID>YRWindowAction('gP')<CR>
-    nnoremap <buffer> <silent> d             :call <SID>YRWindowAction('d')<CR>
-    vnoremap <buffer> <silent> d             :call <SID>YRWindowAction('d')<CR>
-    vnoremap <buffer> <silent> r             :call <SID>YRWindowAction('r')<CR>
-    nnoremap <buffer> <silent> a             :call <SID>YRWindowAction('a')<CR>
-    nnoremap <buffer> <silent> ?             :call <SID>YRWindowAction('?')<CR>
+    nnoremap <buffer> <silent> <2-LeftMouse> :call <SID>YRWindowActionN('p','n')<CR>
+    nnoremap <buffer> <silent> <CR>          :call <SID>YRWindowActionN('p','n')<CR>
+    vnoremap <buffer> <silent> <CR>          :call <SID>YRWindowAction('p','v')<CR>
+    nnoremap <buffer> <silent> p             :call <SID>YRWindowActionN('p','n')<CR>
+    vnoremap <buffer> <silent> p             :call <SID>YRWindowAction('p','v')<CR>
+    nnoremap <buffer> <silent> P             :call <SID>YRWindowActionN('P','n')<CR>
+    vnoremap <buffer> <silent> P             :call <SID>YRWindowAction('P','v')<CR>
+    nnoremap <buffer> <silent> gp            :call <SID>YRWindowActionN('gp','n')<CR>
+    vnoremap <buffer> <silent> gp            :call <SID>YRWindowAction('gp','v')<CR>
+    nnoremap <buffer> <silent> gP            :call <SID>YRWindowActionN('gP','n')<CR>
+    vnoremap <buffer> <silent> gP            :call <SID>YRWindowAction('gP','v')<CR>
+    nnoremap <buffer> <silent> d             :call <SID>YRWindowActionN('d','n')<CR>
+    vnoremap <buffer> <silent> d             :call <SID>YRWindowAction('d','v')<CR>
+    vnoremap <buffer> <silent> r             :call <SID>YRWindowAction('r','v')<CR>
+    nnoremap <buffer> <silent> a             :call <SID>YRWindowActionN('a','n')<CR>
+    nnoremap <buffer> <silent> ?             :call <SID>YRWindowActionN('?','n')<CR>
     nnoremap <buffer> <silent> u             :call <SID>YRShow(0)<CR>
-    nnoremap <buffer> <silent> q             :call <SID>YRWindowAction('q')<CR>
+    nnoremap <buffer> <silent> q             :call <SID>YRWindowActionN('q','n')<CR>
     nnoremap <buffer> <silent> <space>     \|:silent exec 'vertical resize '.
                 \ (
                 \ g:yankring_window_use_horiz!=1 && winwidth('.') > g:yankring_window_width
@@ -1557,24 +1603,77 @@ function! s:YRWindowOpen(results)
 
 endfunction
 
-function! s:YRWindowAction(op) range
+function! s:YRWindowActionN(op, cmd_mode) 
+    let v_count    = v:count
+    " If no count was specified it will have a value of 0
+    " so set it to at least 1
+    let v_count = ((v_count > 0)?(v_count):1)
+
+    if v_count > 1
+        if !exists("b:yankring_show_range_error")
+            let b:yankring_show_range_error = v_count
+        else
+            let b:yankring_show_range_error = b:yankring_show_range_error - 1
+        endif
+
+        if b:yankring_show_range_error == 1
+            call s:YRWarningMsg("YR:Use visual mode if you need to specify a count")
+            unlet b:yankring_show_range_error
+        endif
+        return
+    endif
+    
+    " while v_count > 0
+        call s:YRWindowAction(a:op, a:cmd_mode)
+        let v_count = v_count - 1
+    " endwhile
+
+    if g:yankring_window_auto_close == 1 && v_count == 0
+        exec 'bdelete '.bufnr(s:yr_buffer_name)
+        return "" 
+    endif
+
+    return "" 
+endfunction
+
+function! s:YRWindowAction(op, cmd_mode) range
     let default_buffer = ((&clipboard=='unnamed')?'*':'"')
-    let opcode  = a:op
-    let saveA   = getreg('a')
-    let saveA_t = getregtype('a')
-    let saveD   = getreg(default_buffer)
-    let saveD_t = getregtype(default_buffer)
-    let lines   = ""
+    let opcode     = a:op
+    let saveA      = getreg('a')
+    let saveA_t    = getregtype('a')
+    let saveD      = getreg(default_buffer)
+    let saveD_t    = getregtype(default_buffer)
+    let lines      = ""
+    let v_count    = v:count
+    let cmd_mode   = a:cmd_mode
+    let firstline  = a:firstline
+    let lastline   = a:lastline
+
+    if cmd_mode == 'n'
+        let v_count = 1
+        " if v_count > 1
+        "     call s:YRWarningMsg('Use visual mode to apply a count')
+        "     return
+        " endif
+        " If a count was provided (5p), we want to repeat the paste
+        " 5 times, but this also alters the a:firstline and a:lastline
+        " ranges, which while in normal mode we do not want
+        let lastline = firstline
+    endif
+    " If no count was specified it will have a value of 0
+    " so set it to at least 1
+    let v_count = ((v_count > 0)?(v_count):1)
+
     if '[dr]' =~ opcode 
         " Reverse the order of the lines to act on
-        let begin = a:lastline
-        while begin >= a:firstline 
+        let begin = lastline
+        while begin >= firstline 
             let lines = lines."\n".getline(begin)
             let begin = begin - 1
         endwhile
     else
         " Process the selected items in order
-        exec a:firstline.','.a:lastline.'yank a'
+        exec firstline.','.lastline.'yank a'
         let lines = "\n".@a
     endif
     call setreg('a', saveA, saveA_t)
@@ -1594,11 +1693,13 @@ function! s:YRWindowAction(op) range
         call s:YRShow(0)
         return
     elseif opcode ==# 'a'
+	let l:curr_line = line(".")
         " Toggle the auto close setting
         let g:yankring_window_auto_close = 
                     \ (g:yankring_window_auto_close == 1?0:1)
         " Display the status line / help 
         call s:YRWindowStatus(0)
+	call cursor(l:curr_line,0)
         return
     elseif opcode ==# '?'
         " Display the status line / help 
@@ -1625,30 +1726,33 @@ function! s:YRWindowAction(op) range
     " Only execute this code if we are operating on elements
     " within the yankring
     if '[auq?]' !~# opcode 
-        let iter  = 0
-        let index = 0
-        let index = match(lines, "\n".'\d\+', index)
-        while index > -1
-            " Retrieve the keystrokes for the mappings
+        while v_count > 0
+            let iter  = 0
+            let index = 0
             let index = match(lines, "\n".'\d\+', index)
-            let elem  = matchstr(lines, "\n".'\zs\d\+', index)
+            while index > -1
+                " Retrieve the keystrokes for the mappings
+                let index = match(lines, "\n".'\d\+', index)
+                let elem  = matchstr(lines, "\n".'\zs\d\+', index)
 
-            if elem > 0 && elem <= s:yr_count
-                if iter > 0 && opcode =~# 'p'
-                    " Move to the end of the last pasted item
-                    " only if pasting after (not above)
-                    ']
+                if elem > 0 && elem <= s:yr_count
+                    if iter > 0 && opcode =~# 'p'
+                        " Move to the end of the last pasted item
+                        " only if pasting after (not above)
+                        ']
+                    endif
+                    exec cmd . elem . parms
+                    let iter = iter + 1
                 endif
-                exec cmd . elem . parms
-                let iter = iter + 1
-            endif
-            " Search for the next element beginning with a newline character
-            " Add +2, 1 to go by the number, 1 for the newline character
-            let index = index + strlen(elem) + 2 
-            if index >= strlen(lines)
-                break
-            endif
-            let index = match(lines, "\n".'\d\+', index)
+                " Search for the next element beginning with a newline character
+                " Add +2, 1 to go by the number, 1 for the newline character
+                let index = index + strlen(elem) + 2 
+                if index >= strlen(lines)
+                    break
+                endif
+                let index = match(lines, "\n".'\d\+', index)
+            endwhile
+            let v_count = v_count - 1
         endwhile
 
         if opcode ==# 'd'
@@ -1656,7 +1760,7 @@ function! s:YRWindowAction(op) range
             return ""
         endif
 
-        if g:yankring_window_auto_close == 1
+        if g:yankring_window_auto_close == 1 && cmd_mode == 'v'
             exec 'bdelete '.bufnr(s:yr_buffer_name)
             return "" 
         endif
