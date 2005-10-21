@@ -1,8 +1,8 @@
 " yankring.vim - Yank / Delete Ring for Vim
 " ---------------------------------------------------------------
-" Version:  2.1
+" Version:  2.2
 " Authors:  David Fishburn <fishburn@ianywhere.com>
-" Last Modified: Tue Oct 11 2005 9:42:48 PM
+" Last Modified: Wed Oct 12 2005 11:54:41 AM
 " Script:   http://www.vim.org/scripts/script.php?script_id=1234
 " Based On: Mocked up version by Yegappan Lakshmanan
 "           http://groups.yahoo.com/group/vim/post?act=reply&messageNum=34406
@@ -18,7 +18,7 @@ if v:version < 602
   finish
 endif
 
-let loaded_yankring = 21
+let loaded_yankring = 22
 
 " Allow the user to override the # of yanks/deletes recorded
 if !exists('g:yankring_max_history')
@@ -1572,10 +1572,10 @@ function! s:YRWindowOpen(results)
     nnoremap <buffer> <silent> d             :call <SID>YRWindowActionN('d','n')<CR>
     vnoremap <buffer> <silent> d             :call <SID>YRWindowAction('d','v')<CR>
     vnoremap <buffer> <silent> r             :call <SID>YRWindowAction('r','v')<CR>
-    nnoremap <buffer> <silent> a             :call <SID>YRWindowActionN('a','n')<CR>
-    nnoremap <buffer> <silent> ?             :call <SID>YRWindowActionN('?','n')<CR>
+    nnoremap <buffer> <silent> a             :call <SID>YRWindowAction('a','n')<CR>
+    nnoremap <buffer> <silent> ?             :call <SID>YRWindowAction('?','n')<CR>
     nnoremap <buffer> <silent> u             :call <SID>YRShow(0)<CR>
-    nnoremap <buffer> <silent> q             :call <SID>YRWindowActionN('q','n')<CR>
+    nnoremap <buffer> <silent> q             :call <SID>YRWindowAction('q','n')<CR>
     nnoremap <buffer> <silent> <space>     \|:silent exec 'vertical resize '.
                 \ (
                 \ g:yankring_window_use_horiz!=1 && winwidth('.') > g:yankring_window_width

@@ -1,7 +1,7 @@
 *yankring.txt*      For Vim version 6.2 and 7.0. 
 
-Author:	        David Fishburn                             August 20, 2005
-Version:        2.0
+Author:	        David Fishburn                             October 19, 2005
+Version:        2.2
 
 For instructions on installing this file, type
 	:help add-local-help |add-local-help| inside Vim.
@@ -948,6 +948,11 @@ mapping: >
 
 ==============================================================================
 7. History                                       *yankring-history*
+
+  2.2: October 19, 2005: 
+         BF: If you pressed '?' to toggle the display of the help in the
+             yankring window, the window would close.  This also applied to
+             'a', which allowed you to toggle the autoclose feature.
 
   2.1: October 11, 2005: 
          NF: Added the ability for the yankring to override Vim's numbered 
