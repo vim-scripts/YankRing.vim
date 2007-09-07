@@ -1,7 +1,7 @@
-*yankring.txt*      For Vim version 6.2 and 7.0. 
+*yankring.txt*      For Vim version 7.0. 
 
-Author:	        David Fishburn                             October 19, 2005
-Version:        2.2
+Author:	        David Fishburn                             September 7, 2007
+Version:        3.0
 
 For instructions on installing this file, type
 	:help add-local-help |add-local-help| inside Vim.
@@ -33,6 +33,7 @@ For instructions on installing this file, type
        5.14 YRMapsCreate......................: |YRMapsCreate|
        5.15 YRMapsDelete......................: |YRMapsDelete|
        5.16 YRSearch..........................: |YRSearch|
+       5.17 YRRunAfterMaps....................: |yankring-custom-maps|
     6. Tutorial...............................: |yankring-tutorial|
        6.1  YRShow............................: |YRShow-example|
        6.2  YRReplace.........................: |YRReplace-example|
@@ -53,12 +54,15 @@ deletes.  These previous deletes can be referenced using [register]p, so
 "1p will paste the last delete, "2p the 2nd last delete.  For more
 information see |quote_number|.
 
-Vim does not provide any mechanism to reference previous yanked text.  
+Vim does not provide any mechanism to reference previously yanked text.  
 In Emacs this feature is called the "kill ring".
 
 The yankring plugin allows the user to configure the number of yanked
 and deleted text.  After text has been pasted, it can be replaced with
 a previous value from the yankring.
+
+As of version 3.0, the yankring's content will persist (by default) 
+between starting and stopping Vim.
 
 The plugin can be toggled on and off, and supports:
    Ranges
@@ -101,6 +105,12 @@ your |.vimrc|.
         separate line.  Since each yank could be very large, the display of
         the element is limited to the above default.  >
             let g:yankring_max_display = 70
+    yankring_persist  
+<       Default: 1
+        If you have enabled the storing of global variables in the |viminfo|
+        file, the yankring will be default persist the contents of the ring
+        between starting and stopping Vim.  To disable this feature: >
+            let g:yankring_persist = 0
     yankring_dot_repeat_yank
 <       Default: Based on the Vim cpoption setting
         By default Vim will not repeat (using '.') yanking of text.  This can
@@ -307,6 +317,7 @@ This line remaps Y (which the user presses) to the YRYankCount command.  The
 YRYankCount tells Vim to execute y$ instead.
 
 
+==============================================================================
 4. Using the YankRing Window:                    *yankring-window*
 
 This is a new feature as of the 2.0 release.  The yankring uses a
@@ -360,6 +371,7 @@ in the yankring window.
  
 
 
+==============================================================================
 5. Commands:                                     *yankring-commands*
 
 The predefined mappings call some specific commands with special parameters.
@@ -948,6 +960,23 @@ mapping: >
 
 ==============================================================================
 7. History                                       *yankring-history*
+
+  3.0: September 7, 2007: 
+         NF: Converted the yankring to use the new Vim7's List object which
+             means it is no longer compatible with Vim6.
+         NF: By default the yankring will now maintain the yankring's items
+             persistently by default.  It does this via the |viminfo| file.
+             This means the contents are the yankring rely on the internal
+             variables of only 1 Vim instance.
+         BF: YRToggle was not unmapping 'gp' and 'gP'.
+         BF: YRSearch prompted the user for a regex even if one was provided
+             on the command line.
+         BF: If g:yankring_manage_numbered_reg is enabled, the "." operator
+             did not correctly repeat the previous action (Pedro DeRose).
+
+  2.2: November 1, 2005: 
+         NF: Added 'x' to the list of yankring_n_keys.  This is very useful
+             in visual mode since it can delete a lot of characters.
 
   2.2: October 19, 2005: 
          BF: If you pressed '?' to toggle the display of the help in the
