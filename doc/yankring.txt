@@ -1,7 +1,7 @@
 *yankring.txt*      For Vim version 7.0. 
 
-Author:	        David Fishburn                             September 7, 2007
-Version:        3.0
+Author:	        David Fishburn                             June 24, 2008
+Version:        4.0
 
 For instructions on installing this file, type
 	:help add-local-help |add-local-help| inside Vim.
@@ -69,10 +69,14 @@ The plugin can be toggled on and off, and supports:
    Registers
    Counts
    All visual modes
+   All motions
+   All text-objects
 
 If you have any suggestions for the improvement of this plugin, see the
 yankring.vim file for my email address.  Suggestions / bug reports are
 always welcome.
+
+For details on the changes between versions see |yankring-history|.
 
 ==============================================================================
 3. Configuration                                 *yankring-configure*
@@ -961,12 +965,46 @@ mapping: >
 ==============================================================================
 7. History                                       *yankring-history*
 
+  4.0: June 24, 2008: 
+         NF: The yankring by default now captures all |text-objects| and 
+             all motions (|motion.txt|) which Vim supports.  Version 3.0 only
+             supported a subset of the basic motion commands.
+         NF: Prior to this version only predefined maps triggered the 
+             capture of data into the yankring.  These maps only supported
+             yanks and deletes.  The yankring now also supports
+             operator-pending mode, which allows a greater range of operations
+             to be automatically captured and added to the yankring.  
+             Operating pending mode functionality requires Vim 7.2 or Vim 7.1
+             with patch #205.  If using Vim 7.1 you can determine this with: 
+                echo has("patch205")
+         NF: Prior to this version only yanks and deletes were registered
+             in the yankring.  Changes are now also captured into the
+             yankring.
+         NF: The yankring will also capture the system cliboard when focus is
+             returned to the vim window.  This is useful if you copy text
+             between applications.
+         NF: The yankring window always opened bottom horizontal.  Now it
+             can be opened top or bottom and horizontal or vertically.
+             This can be controlled via variables in your .vimrc.
+         BF: The yankring has an option to persist between instances
+             of Vim by storing the values in global variables within
+             the viminfo.  This has led to some unusual ordering of
+             items in the ring from conflicts between instances.
+             This option has been turn off by default.
+         BF: Their was an issue with yanking using y$.
+
+  3.1: September 10, 2007: 
+         NF: YRClear will now unlet all global variables it uses to store
+             the data if the persist storage is specified (the default).
+             Large values in the viminfo file could possibly affect other
+             applications.
+
   3.0: September 7, 2007: 
          NF: Converted the yankring to use the new Vim7's List object which
              means it is no longer compatible with Vim6.
          NF: By default the yankring will now maintain the yankring's items
              persistently by default.  It does this via the |viminfo| file.
-             This means the contents are the yankring rely on the internal
+             This means the contents of the yankring rely on the internal
              variables of only 1 Vim instance.
          BF: YRToggle was not unmapping 'gp' and 'gP'.
          BF: YRSearch prompted the user for a regex even if one was provided
