@@ -1,12 +1,12 @@
 " yankring.vim - Yank / Delete Ring for Vim
 " ---------------------------------------------------------------
-" Version:  4.0
-" Authors:  David Fishburn <fishburn@ianywhere.com>
-" Last Modified: Thu 19 Jun 2008 10:27:24 PM Eastern Daylight Time
+" Version:  4.1
+" Authors:  David Fishburn <dfishburn.vim@gmail.com>
+" Last Modified: 2008 Aug 09
 " Script:   http://www.vim.org/scripts/script.php?script_id=1234
 " Based On: Mocked up version by Yegappan Lakshmanan
 "           http://groups.yahoo.com/group/vim/post?act=reply&messageNum=34406
-"  License: GPL (Gnu Public License)
+" License:  GPL (Gnu Public License)
 " GetLatestVimScripts: 1234 1 :AutoInstall: yankring.vim
 
 if exists('loaded_yankring') || &cp
@@ -18,7 +18,7 @@ if v:version < 700
   finish
 endif
 
-let loaded_yankring = 40
+let loaded_yankring = 41
 
 let s:yr_has_voperator     = 0
 if v:version > 701 || ( v:version == 701 && has("patch205") )
@@ -139,12 +139,11 @@ if !exists('g:yankring_to_keys')
     let g:yankring_to_keys = 'iw,iW,aw,aW,as,is,ap,ip,a],a[,i],i[,a),a(,ab,i),i(,ib,a>,a<,i>,i<,at,it,a},a{,aB,i},i{,iB,a",a'',a`,i",i'',i`'
 endif
 
-" Some operating pending motions need to be specified 
-" using v: to make the actions inclusive, instead of exclusive.
-" The f and t motions need this for sure.
-if !exists('g:yankring_o_inclusive')
-    let g:yankring_o_inclusive = '\(\e\|\f\|i\|\t\|\$\)'
+" Allow the user to specify what operator pending motions to map
+if !exists('g:yankring_ignore_operator')
+    let g:yankring_ignore_operator = 'g~ gu gU ! = gq g? > < zf g@'
 endif
+let g:yankring_ignore_operator = ' '.g:yankring_ignore_operator.' '
 
 " Whether we sould map the . operator
 if !exists('g:yankring_map_dot')
@@ -161,7 +160,7 @@ if !exists('g:yankring_v_key')
 endif
 
 if !exists('g:yankring_del_v_key')
-    let g:yankring_del_v_key = 'd'
+    let g:yankring_del_v_key = 'd x'
 endif
 
 if !exists('g:yankring_paste_n_bkey')
@@ -1104,18 +1103,24 @@ function! s:YRPaste(replace_last_paste_selection, nextvalue, direction, ...)
             return
         else
             " Check for the expression register, in this special case
-            " we must copy it's content into the default buffer and paste
+            " we must copy it's evaluation into the default buffer and paste
             if user_register == '='
-                let user_register = ''
-                call setreg(default_buffer, histget('=', -1) )
+                " Save the default register since Vim will only
+                " allow the expression register to be pasted once
+                " and will revert back to the default buffer
+                let save_default_reg = @"
+                call setreg(default_buffer, eval(histget('=', -1)) )
             else
                 let user_register = '"'.user_register
             endif
             exec "normal! ".
                         \ ((cmd_mode=='n') ? "" : "gv").
                         \ ((v_count > 0)?(v_count):'').
-                        \ user_register.
+                        \ ((user_register=='=')?'':user_register).
                         \ a:direction
+            if user_register == '='
+                let @" = save_default_reg
+            endif
             " In this case, we have bypassed the yankring
             " If the user hits next or previous we want the
             " next item pasted to be the top of the yankring.
@@ -1258,17 +1263,24 @@ function! YRMapsExpression(motion)
         let cmds = cmds . c
     endif
 
-    " Check if we are performing an action that will
-    " take us into insert mode
-    if '[cCsS]' !~ v:operator
-        " If we have not entered insert mode, feed the call
-        " to record the current change when the function ends.
-        " This is necessary since omaps do not update registers
-        " until the function completes.
-        " The InsertLeave event will handle the motions
-        " that place us in insert mode and record the
-        " changes when insert mode ends.
-        let cmds = cmds . ":silent! call YRRecord3()\<CR>"
+    " There are a variety of commands which do not change the
+    " registers, so these operators should be ignored when
+    " determining which operations to record
+    " Simple example is '=' which simply formats the 
+    " the selected text.
+    if ' \('.escape(join(split(g:yankring_ignore_operator), '\|'), '/.*~$^[]' ).'\) ' !~ escape(v:operator, '/.*~$^[]') 
+        " Check if we are performing an action that will
+        " take us into insert mode
+        if '[cCsS]' !~ escape(v:operator, '/.*~$^[]')
+            " If we have not entered insert mode, feed the call
+            " to record the current change when the function ends.
+            " This is necessary since omaps do not update registers
+            " until the function completes.
+            " The InsertLeave event will handle the motions
+            " that place us in insert mode and record the
+            " changes when insert mode ends.
+            let cmds = cmds . ":silent! call YRRecord3()\<CR>"
+        endif
     endif
 
     " echo cmds
@@ -1299,7 +1311,7 @@ function! s:YRMapsCreate()
         " Loop through and prompt the user for all buffer connection parameters.
         for o_map in o_maps
             if strlen(o_map) > 0
-                exec 'onoremap <script> <expr> '.o_map." YRMapsExpression('".o_map."')"
+                exec 'onoremap <script> <expr> '.o_map." YRMapsExpression('".substitute(o_map, "'", "''", 'g')."')"
             endif
         endfor
 
@@ -1308,7 +1320,7 @@ function! s:YRMapsCreate()
         " Loop through and prompt the user for all buffer connection parameters.
         for to_map in to_maps
             if strlen(to_map) > 0
-                exec 'onoremap <script> <expr> '.to_map." YRMapsExpression('".to_map."')"
+                exec 'onoremap <script> <expr> '.to_map." YRMapsExpression('".substitute(to_map, "'", "''", 'g')."')"
             endif
         endfor
     endif
@@ -1324,7 +1336,14 @@ function! s:YRMapsCreate()
         exec 'vnoremap <silent>'.g:yankring_v_key." :YRYankRange 'v'<CR>"
     endif
     if g:yankring_del_v_key != ''
-        exec 'vnoremap <silent>'.g:yankring_del_v_key." :YRDeleteRange 'v'<CR>"
+        for v_map in split(g:yankring_del_v_key)
+            if strlen(v_map) > 0
+                try
+                    exec 'vnoremap <silent>'.v_map." :YRDeleteRange 'v'<CR>"
+                catch
+                endtry
+            endif
+        endfor
     endif
     if g:yankring_paste_n_bkey != ''
         exec 'nnoremap <silent>'.g:yankring_paste_n_bkey." :<C-U>YRPaste 'P'<CR>"
@@ -1400,7 +1419,14 @@ function! s:YRMapsDelete()
         exec 'vunmap '.g:yankring_v_key
     endif
     if g:yankring_del_v_key != ''
-        exec 'vunmap '.g:yankring_del_v_key
+        for v_map in split(g:yankring_del_v_key)
+            if strlen(v_map) > 0
+                try
+                    exec 'vunmap '.v_map
+                catch
+                endtry
+            endif
+        endfor
     endif
     if g:yankring_paste_n_bkey != ''
         exec 'nunmap '.g:yankring_paste_n_bkey
@@ -2047,7 +2073,7 @@ endfunction
 " Call YRFocusGained to check if the clipboard has been updated
 augroup YankRing
     autocmd!
-    autocmd VimEnter    * :call <SID>YRInit()
+    " autocmd VimEnter    * :call <SID>YRInit()
     autocmd WinLeave    * :call <SID>YRWinLeave()
     autocmd FocusGained * :if has('clipboard') | call <SID>YRFocusGained() | endif
     autocmd InsertLeave * :call <SID>YRInsertLeave()

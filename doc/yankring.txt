@@ -1,7 +1,7 @@
 *yankring.txt*      For Vim version 7.0. 
 
-Author:	        David Fishburn                             June 24, 2008
-Version:        4.0
+Author:	        David Fishburn                             August 9, 2008
+Version:        4.1
 
 For instructions on installing this file, type
 	:help add-local-help |add-local-help| inside Vim.
@@ -212,6 +212,13 @@ your |.vimrc|.
         the top 10 elements in the yankring are in the numbered reqisters 0-9
         you can put the following in your |vimrc| >
             let g:yankring_manage_numbered_reg = 1
+    yankring_ignore_operator
+<       Default: 'g~ gu gU ! = gq g? > < zf g@'
+        There are a number of Vim operations which do not change any 
+        registers, and therefore should not be captured by the yankring.
+        This list is used to ignore the appropriate operators.
+        You can put the following in your |vimrc| >
+            let g:yankring_ignore_operator = 'g~ gu gU ! = gq g? > < zf g@'
 
 <
 3.2 Default Keys                                 *yankring-mappings*
@@ -964,6 +971,17 @@ mapping: >
 
 ==============================================================================
 7. History                                       *yankring-history*
+
+  4.1: August 9, 2008: 
+         NF: The yankring now allows you to override which operators should
+             be ignored (yankring_ignore_operator).  By default this is
+             set for the standard Vim operators which do not modify any
+             registers (Examples: = and gu) (Andy Wokula).
+         NF: The yankring did not map v_x (Matt Tolton).
+         BF: The expression register (quote_=) was not accounted for correctly
+             (Agathoklis Hatzimanikas).
+         BF: Using the v:operator variable must be escaped when used in
+             a regular expression.
 
   4.0: June 24, 2008: 
          NF: The yankring by default now captures all |text-objects| and 
