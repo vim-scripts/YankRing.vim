@@ -1,8 +1,8 @@
 " yankring.vim - Yank / Delete Ring for Vim
 " ---------------------------------------------------------------
-" Version:  4.1
+" Version:  5.0
 " Authors:  David Fishburn <dfishburn.vim@gmail.com>
-" Last Modified: 2008 Aug 09
+" Last Modified: 2008 Sep 21
 " Script:   http://www.vim.org/scripts/script.php?script_id=1234
 " Based On: Mocked up version by Yegappan Lakshmanan
 "           http://groups.yahoo.com/group/vim/post?act=reply&messageNum=34406
@@ -18,7 +18,7 @@ if v:version < 700
   finish
 endif
 
-let loaded_yankring = 41
+let loaded_yankring = 50
 
 let s:yr_has_voperator     = 0
 if v:version > 701 || ( v:version == 701 && has("patch205") )
@@ -123,20 +123,22 @@ if !exists('g:yankring_n_keys')
     " to gain the omap support.
     if s:yr_has_voperator == 1
         " Use omaps for the rest of the functionality
-        let g:yankring_n_keys = 'yy,Y,dd,D,x'
+        let g:yankring_n_keys = 'Y D x X'
     else
-        let g:yankring_n_keys = 'x,yy,dd,yw,dw,ye,de,yE,dE,yiw,diw,yaw,daw,y$,d$,Y,D,yG,dG,ygg,dgg'
+        let g:yankring_n_keys = 'x yy dd yw dw ye de yE dE yiw diw yaw daw y$ d$ Y D yG dG ygg dgg'
     endif
 endif
 
 " Allow the user to specify what operator pending motions to map
 if !exists('g:yankring_o_keys')
-    let g:yankring_o_keys = 'b,B,w,W,e,E,f,F,t,T,$,G,;'
+    " let g:yankring_o_keys = 'b,B,w,W,e,E,f,F,t,T,d,y,$,G,;'
+    " o-motions and text objects, without zap-to-char motions
+    let g:yankring_o_keys =  'b B w W e E d y $ G ;'
+    let g:yankring_o_keys .= ' iw iW aw aW as is ap ip a] a[ i] i[ a) a( ab i) i( ib a> a< i> i< at it a} a{ aB i} i{ iB a" a'' a` i" i'' i`'
 endif
 
-" Allow the user to specify what text objects  to map
-if !exists('g:yankring_to_keys')
-    let g:yankring_to_keys = 'iw,iW,aw,aW,as,is,ap,ip,a],a[,i],i[,a),a(,ab,i),i(,ib,a>,a<,i>,i<,at,it,a},a{,aB,i},i{,iB,a",a'',a`,i",i'',i`'
+if !exists('g:yankring_zap_keys')
+    let g:yankring_zap_keys = 'f F t T'
 endif
 
 " Allow the user to specify what operator pending motions to map
@@ -705,7 +707,7 @@ endfunction
 
 
 " Adds this value to the yankring.
-function YRRecord(...) 
+function! YRRecord(...) 
 
     let register = '"'
     if a:0 > 0
@@ -1247,20 +1249,24 @@ endfunction
  
 
 " Create the default maps
-function! YRMapsExpression(motion)
+function! YRMapsExpression(sid, motion, ...)
     let cmds     = a:motion
 
+    " OLD ANDY
     " Check if we are in operator-pending mode
     if cmds =~? '\(f\|t\)'
-        " If the operator pending mode is f or t
-        " request the final character from the user
-        let c = s:YRGetChar()
-        if c == "\<C-C>"
+        let zapto = a:0==0 ? "" : s:YRGetChar()
+
+        if zapto == "\<C-C>"
             " Abort if the user hits Control C
             echomsg "YR:Aborting command:".v:operator.a:motion
             return "\<C-C>"
         endif
-        let cmds = cmds . c
+
+        let cmds = cmds . zapto
+        " if v:operator =~ '[cdy]'
+        "     let cmds .= a:sid. "record"
+        " endif
     endif
 
     " There are a variety of commands which do not change the
@@ -1279,57 +1285,48 @@ function! YRMapsExpression(motion)
             " The InsertLeave event will handle the motions
             " that place us in insert mode and record the
             " changes when insert mode ends.
-            let cmds = cmds . ":silent! call YRRecord3()\<CR>"
+            let cmds .= a:sid. "record"
         endif
     endif
 
     " echo cmds
     return cmds
+ 
 endfunction
  
 
 " Create the default maps
 function! s:YRMapsCreate()
-
-    " Iterate through a comma separated list of mappings and create
+    " Iterate through a space separated list of mappings and create
     " calls to the YRYankCount function
-    let n_maps = split(g:yankring_n_keys, ',')
+    let n_maps = split(g:yankring_n_keys)
     " Loop through and prompt the user for all buffer connection parameters.
-    for n_map in n_maps
-        if strlen(n_map) > 0
-            " exec 'nnoremap <silent>'.n_map." :<C-U>YRYankCount '".n_map."'<CR>"
-            " exec 'nnoremap <silent>'.n_map." :<C-U>YRYankCount '".n_map."'<CR>"
-            " Andy Wokula's suggestion
-            exec 'nnoremap <script> '.n_map.' '.n_map.":call YRRecord3()\<CR>"
-        endif
+    for key in n_maps
+        " exec 'nnoremap <silent>'.key." :<C-U>YRYankCount '".key."'<CR>"
+        " exec 'nnoremap <silent>'.key." :<C-U>YRYankCount '".key."'<CR>"
+        " Andy Wokula's suggestion
+        exec 'nmap' key key."<SID>record"
     endfor
 
     " 7.1.patch205 introduces the v:operator function which was essential
     " to gain the omap support.
     if s:yr_has_voperator == 1
-        let o_maps = split(g:yankring_o_keys, ',')
+        let o_maps = split(g:yankring_o_keys)
         " Loop through and prompt the user for all buffer connection parameters.
-        for o_map in o_maps
-            if strlen(o_map) > 0
-                exec 'onoremap <script> <expr> '.o_map." YRMapsExpression('".substitute(o_map, "'", "''", 'g')."')"
-            endif
+        for key in o_maps
+            exec 'omap <expr>' key 'YRMapsExpression("<SID>","'. escape(key,'\"'). '")'
         endfor
 
-        " Vim Text-Object maps
-        let to_maps = split(g:yankring_to_keys, ',')
-        " Loop through and prompt the user for all buffer connection parameters.
-        for to_map in to_maps
-            if strlen(to_map) > 0
-                exec 'onoremap <script> <expr> '.to_map." YRMapsExpression('".substitute(to_map, "'", "''", 'g')."')"
-            endif
+        for key in split(g:yankring_zap_keys)
+            exec 'omap <expr>' key 'YRMapsExpression("<SID>","'. key. '", 1)'
         endfor
     endif
 
     if g:yankring_map_dot == 1
         if s:yr_has_voperator == 1
-            exec "nnoremap <script> <expr> . YRMapsExpression('.')"
+            nmap <expr> . YRMapsExpression("<SID>",".")
         else
-            exec "nnoremap <silent> . :<C-U>YRYankCount '.'<CR>"
+            nnoremap <silent> . :<C-U>YRYankCount '.'<CR>
         endif
     endif
     if g:yankring_v_key != ''
@@ -1377,39 +1374,24 @@ endfunction
 " Create the default maps
 function! s:YRMapsDelete()
 
-    " Iterate through a comma separated list of mappings and create
+    " Iterate through a space separated list of mappings and create
     " calls to an appropriate YankRing function
-    let n_maps = split(g:yankring_n_keys, ',')
+    let n_maps = split(g:yankring_n_keys)
     " Loop through and prompt the user for all buffer connection parameters.
-    for n_map in n_maps
-        if strlen(n_map) > 0
-            try
-                silent! exec 'nunmap '.n_map
-            catch
-            endtry
-        endif
+    for key in n_maps
+        try
+            silent! exec 'nunmap' key
+        catch
+        endtry
     endfor
 
-    let o_maps = split(g:yankring_o_keys, ',')
+    let o_maps = split(g:yankring_o_keys)
     " Loop through and prompt the user for all buffer connection parameters.
-    for o_map in o_maps
-        if strlen(o_map) > 0
-            try
-                silent! exec 'ounmap '.o_map
-            catch
-            endtry
-        endif
-    endfor
-
-    let to_maps = split(g:yankring_to_keys, ',')
-    " Loop through and prompt the user for all buffer connection parameters.
-    for to_map in to_maps
-        if strlen(to_map) > 0
-            try
-                silent! exec 'ounmap '.to_map
-            catch
-            endtry
-        endif
+    for key in o_maps
+        try
+            silent! exec 'ounmap' key
+        catch
+        endtry
     endfor
 
     if g:yankring_map_dot == 1
@@ -1847,10 +1829,8 @@ function! s:YRWindowActionN(op, cmd_mode)
         return
     endif
     
-    " while v_count > 0
-        call s:YRWindowAction(a:op, a:cmd_mode)
-        let v_count = v_count - 1
-    " endwhile
+    call s:YRWindowAction(a:op, a:cmd_mode)
+    let v_count = v_count - 1
 
     if g:yankring_window_auto_close == 1 && v_count == 0
         exec 'bdelete '.bufnr(s:yr_buffer_name)
@@ -2042,7 +2022,7 @@ endfunction
       
 function! s:YRFocusGained()
     " If the clipboard has changed record it inside the yankring
-    if @+ != s:yr_prev_clipboard
+    if len(@+) > 0 && @+ != s:yr_prev_clipboard
         silent! call YRRecord("+")
         let s:yr_prev_clipboard = @+
     endif
@@ -2082,6 +2062,9 @@ augroup END
 
 " copy register
 inoremap <script> <SID>YRGetChar <c-r>=YRGetChar()<CR>
+nnoremap <silent> <SID>record :call YRRecord3()<cr>
+inoremap <silent> <SID>record <C-R>=YRRecord3()<cr>
+
 
 " Public commands
 command!                           YRClear        call s:YRClear()

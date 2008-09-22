@@ -1,7 +1,7 @@
 *yankring.txt*      For Vim version 7.0. 
 
 Author:	        David Fishburn                             August 9, 2008
-Version:        4.1
+Version:        5.0
 
 For instructions on installing this file, type
 	:help add-local-help |add-local-help| inside Vim.
@@ -972,13 +972,26 @@ mapping: >
 ==============================================================================
 7. History                                       *yankring-history*
 
+  5.0: September 21, 2008: 
+         NF: The yankring can recognize certain Vim commands which do not
+             change the contents of a buffer and not attempt to capture it.
+         NF: The global variables which allow you to customize the behaviour
+             are now space separated instead of comma separated.  This
+             provides greater flexibility but will require you to modify
+             your vimrc (if you have customized it). (Andy Wokula)
+         BF: If using <C-O> from within insert mode, the yankring inserted
+             characters into the buffer instead of capturing the changes,
+             this was fixed by Andy Wokula (Agathoklis Hatzimanikas).
+         BF: The yankring did not properly account for all the different
+             forms of counts "5yy" worked but "y5y" did not (Edwin Shao).
+
   4.1: August 9, 2008: 
          NF: The yankring now allows you to override which operators should
              be ignored (yankring_ignore_operator).  By default this is
              set for the standard Vim operators which do not modify any
              registers (Examples: = and gu) (Andy Wokula).
          NF: The yankring did not map v_x (Matt Tolton).
-         BF: The expression register (quote_=) was not accounted for correctly
+         BF: The expression register (quote=) was not accounted for correctly
              (Agathoklis Hatzimanikas).
          BF: Using the v:operator variable must be escaped when used in
              a regular expression.
