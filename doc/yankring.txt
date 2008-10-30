@@ -1,7 +1,7 @@
 *yankring.txt*      For Vim version 7.0. 
 
-Author:	        David Fishburn                             August 9, 2008
-Version:        5.0
+Author:	        David Fishburn                             October 25, 2008
+Version:        6.0
 
 For instructions on installing this file, type
 	:help add-local-help |add-local-help| inside Vim.
@@ -57,7 +57,7 @@ information see |quote_number|.
 Vim does not provide any mechanism to reference previously yanked text.  
 In Emacs this feature is called the "kill ring".
 
-The yankring plugin allows the user to configure the number of yanked
+The YankRing plugin allows the user to configure the number of yanked
 and deleted text.  After text has been pasted, it can be replaced with
 a previous value from the yankring.
 
@@ -81,51 +81,61 @@ For details on the changes between versions see |yankring-history|.
 ==============================================================================
 3. Configuration                                 *yankring-configure*
 
-The yankring allows the user to choose which keys are to be assigned to
-the various commands.  By default, the yankring chose keys identical
+The YankRing allows the user to choose which keys are to be assigned to
+the various commands.  By default, the YankRing chose keys identical
 with Vim's standard behaviour/keys.  
 
 3.1 Global Variables                             *yankring-globals*
 
-You can customize the yankring by setting various global variables in
+You can customize the YankRing by setting various global variables in
 your |.vimrc|.
 >
     yankring_max_history 
 <       Default: 100
         Controls how many elements to save in the yankring. >
             let g:yankring_max_history = 100
-    yankring_enabled
-<       Default: 1
-        If you do not want to yankring enabled by default, set this 
-        variable in your |vimrc|. >
-            let g:yankring_enabled = 0  " Disables the yankring
-    yankring_separator  
-<       Default: ,
-        Used to parse yankring_n_keys. >
-            let g:yankring_separator = ','
+    yankring_max_element_length 
+<       Default: 1048576 (1M)
+        Will truncate a new entry to the specified maximum.  If 
+        g:yankring_max_element_length is set to 0, there is no limit. >
+            let g:yankring_max_element_length = 4194304 " 4M
     yankring_max_display  
 <       Default: 500
-        When the yankring window is opened, each element is displayed on a
+        When the YankRing window is opened, each element is displayed on a
         separate line.  Since each yank could be very large, the display of
         the element is limited to the above default.  >
             let g:yankring_max_display = 70
+    yankring_enabled
+<       Default: 1
+        If you do not want to YankRing enabled by default, set this 
+        variable in your |vimrc|. >
+            let g:yankring_enabled = 0  " Disables the yankring
     yankring_persist  
 <       Default: 1
         If you have enabled the storing of global variables in the |viminfo|
-        file, the yankring will be default persist the contents of the ring
+        file, the YankRing will be default persist the contents of the ring
         between starting and stopping Vim.  To disable this feature: >
             let g:yankring_persist = 0
+    yankring_share_between_instances
+<       Default: 1
+        By default, any instance of Vim will share the same yankring
+        history file.  But if want each instance to have their own history
+        you can set this option to 0.  Setting g:yankring_persist = 0 and
+        g:yankring_share_between_instances = 0 will ensure no 2 instances
+        of Vim share the same YankRing history AND the history is not 
+        remembered the next time Vim is started. >
+            let g:yankring_share_between_instances = 0
     yankring_dot_repeat_yank
 <       Default: Based on the Vim cpoption setting
         By default Vim will not repeat (using '.') yanking of text.  This can
-        be controlled via the |'cpoptions'| setting.  The yankring now respects
+        be controlled via the |'cpoptions'| setting.  The YankRing now respects
         the cpoptions setting, if 'y' is included and you press '.', the
         previous yank command is repeated and added to the yankring.
         You can also add this behaviour by setting this in your |vimrc|: >
             let g:yankring_dot_repeat_yank = 1
     yankring_ignore_duplicate
 <       Default: 1
-        Duplicates will not be added to the yankring by default.  If a
+        Duplicates will not be added to the YankRing by default.  If a
         duplicate is found, that element will be moved to the top of the
         yankring.  This can be controlled by setting this in your |vimrc|: >
             let g:yankring_ignore_duplicate = 0 
@@ -134,8 +144,8 @@ your |.vimrc|.
         If the '.' (repeat) command should be mapped by the yankring.  Since
         most of the normal commands yy,dd,dw,... are mapped by the yankring,
         if g:yankring_map_dot is false the . operator will not repeat these
-        operations.  The yankring tracks several of the internal Vim registers
-        and decides whether an action was the result of the yankring or an
+        operations.  The YankRing tracks several of the internal Vim registers
+        and decides whether an action was the result of the YankRing or an
         action outside of it.  If the previous action was a result of the
         yankring, it will be executed again.  If it was an action outside of
         the yankring, it asks Vim to repeat the command. >
@@ -148,7 +158,7 @@ your |.vimrc|.
             let g:yankring_paste_using_g = 1
     yankring_window_use_separate 
 <       Default: 1
-        This is a new feature as of the 2.0 release.  The yankring now uses a
+        This is a new feature as of the 2.0 release.  The YankRing now uses a
         separate split buffer to display the yankring.  There are many buffer
         specific maps that allow you to operate over the various elements from
         within the yankring.  Setting this option to 0, uses the 1.0
@@ -156,10 +166,10 @@ your |.vimrc|.
             let g:yankring_window_use_separate = 0
     yankring_window_auto_close
 <       Default: 1
-        By default once you choose an option in the yankring buffer, the
+        By default once you choose an option in the YankRing buffer, the
         action is performed and the buffer window is closed, returning you to
         the original buffer.  This option can be toggled from within the
-        yankring buffer by pressing [a].  The yankring buffer status line
+        YankRing buffer by pressing [a].  The YankRing buffer status line
         visually indicates where auto close is enabled or disabled.  There are
         many times where you need to paste (or delete) many items from the
         yankring.  Pressing [a], disables auto close, allows you to paste many
@@ -168,7 +178,7 @@ your |.vimrc|.
             let g:yankring_window_auto_close = 1
     yankring_window_use_horiz
 <       Default: 1
-        When the yankring window is opened, it uses a horizontal split at the
+        When the YankRing window is opened, it uses a horizontal split at the
         bottom of the Vim window.  It can optionally use a vertical split by
         setting this option to 0.  >
             let g:yankring_window_use_horiz = 0  " Use vertical split
@@ -208,8 +218,8 @@ your |.vimrc|.
         using [register]p, so "0p will paste the last yank, "1p will paste the
         last delete, "2p the 2nd last delete.  For more information see
         |quote_number|.
-        If you wish the yankring to maintain these numbered registers so 
-        the top 10 elements in the yankring are in the numbered reqisters 0-9
+        If you wish the YankRing to maintain these numbered registers so 
+        the top 10 elements in the YankRing are in the numbered reqisters 0-9
         you can put the following in your |vimrc| >
             let g:yankring_manage_numbered_reg = 1
     yankring_ignore_operator
@@ -219,6 +229,29 @@ your |.vimrc|.
         This list is used to ignore the appropriate operators.
         You can put the following in your |vimrc| >
             let g:yankring_ignore_operator = 'g~ gu gU ! = gq g? > < zf g@'
+    yankring_history_dir
+<       Default: $HOME
+        The YankRing stores the text in a file.  This global variable
+        allows you to customize where the file(s) will be stored.
+        You can put the following in your |vimrc| >
+            let g:yankring_history_dir = '$VIM'
+    yankring_history_file
+<       Default: 'yankring_history'
+        The history filename prefix can be controlled by setting this 
+        variable.
+        You can put the following in your |vimrc| >
+            let g:yankring_history_file = 'my_yankring_history_file'
+    yankring_clipboard_monitor
+<       Default: 1
+        When flipping between applications I find I often copy text
+        and attempt to use it inside of Vim.  This is typically easy
+        by simply using "+p, but there are times when I will repeatedly
+        want to use the same text later on.  By default, the YankRing
+        will detect when Vim regains focus and check if the clipboard
+        has changed since it last checked.  If so, it will add the contents
+        of the clipboard to the YankRing.  To disable this feature 
+        you can put the following in your |vimrc| >
+            let g:yankring_clipboard_monitor = 0
 
 <
 3.2 Default Keys                                 *yankring-mappings*
@@ -228,17 +261,55 @@ variables in your |vimrc|.
 >
     yankring_n_keys
 <       n - normal mode
-        Default: yy,dd,yw,dw,ye,de,yE,dE,yiw,diw,yaw,daw,
-                 y$,d$,Y,D,yG,dG,ygg,dgg
-        Yanks text in normal mode.    
+        Default Vim 7.2: 
+            'Y D x X'
+        Default Vim 7.1 and below: 
+            'x yy dd yw dw ye de yE dE yiw diw yaw daw y$ d$ Y D yG dG ygg dgg'
+
+        With the introduction of some new features in Vim 7.2 it is no longer
+        necessary to list all cmds which the YankRing will act upon.  
+        The yankring_n_keys only lists actions which an omap cannot be used.
         Using the yankring_separator, the above list is parsed and 
         individual mappings are created.  For each of the above normal 
-        commands the yankring will include the text those commands 
+        commands the YankRing will include the text those commands 
         acted upon.   There are many ways to accomplish the same result 
         in Vim, if you do not see a common key stroke you regularly use
         simply add the following to your |vimrc| with the additional 
         keys you wished mapped.  >
-        let g:yankring_n_keys = 'yy,dd,yw,dw,ye,de,yE,dE,yiw,diw,yaw,daw,y$,d$,Y,D,yG,dG,ygg,dgg'
+            let g:yankring_n_keys = 'Y D x X'
+    yankring_o_keys
+<       o - omap mode
+        Default:
+            Standard motions: 'b B w W e E d y $ G ;'
+            Vim text objects: ' iw iW aw aW as is ap ip a] a[ i] i['
+                              'a) a( ab i) i( ib a> a< i> i< at it '
+                              'a} a{ aB i} i{ iB a" a'' a` i" i'' i`'
+
+        As of Vim 7.2 omaps are used to capture changes to the registers
+        in Vim.  All of the standard motion commands are captured.
+        New to YankRing 5.0 all default Vim text objects are also 
+        captured.
+        Using the yankring_separator, the above list is parsed and 
+        individual mappings are created.  For each of the above normal 
+        commands the YankRing will include the text those commands 
+        acted upon.   There are many ways to accomplish the same result 
+        in Vim, if you do not see a common key stroke you regularly use
+        simply add the following to your |vimrc| with the additional 
+        keys you wished mapped.  >
+            let g:yankring_o_keys = 'b B w W e E d y $ G ; iw iW aw aW'
+    yankring_zap_keys 
+<       Default: 'f F t T'
+        omaps are enough for most operations except for f and t.
+        These motions prompt the user for the character they should
+        act upon.  These must be treated as a special case in YankRing. >
+            let g:yankring_zap_keys = 'f t'
+    yankring_ignore_operator
+<       Default: 'g~ gu gU ! = gq g? > < zf g@'
+        There are certain motions which do not update any registers
+        in Vim.  If the registers are not changed, there is nothing
+        the YankRing can capture.  This list instructs the YankRing
+        to ignore any action for these keys. >
+            let g:yankring_ignore_operator = 'g~ gu gU'
     yankring_v_key
 <       v - visual mode
         Default: y 
@@ -246,7 +317,7 @@ variables in your |vimrc|.
     yankring_del_v_key
 <       n - normal mode
         Default: d 
-        The visually select text is included in the yankring and deleted. >
+        The visually select text is included in the YankRing and deleted. >
     yankring_paste_n_bkey
 <       n - normal mode
         b - before
@@ -284,36 +355,80 @@ variables in your |vimrc|.
     yankring_replace_n_pkey
 <       n - normal mode
         Default: <C-P>
+        If you do not want to open the YankRing window to choose your
+        selection, then you can paste (as usual) then use a YankRing 
+        mapping to cycle through items in the YankRing.  This is especially
+        useful if you know you recently used the text you are looking for.
         If you wish to cycle through the yankring, replacing the previously
         pasted text with the previous yanked text you can repeatedly press
         <C-P> (or whatever keystroke you choose to map it to).  This map
         moves backwards through the yankring, so you will retrieve your
-        most recent yank.  >
+        most recent yank.  
+
+        I prefer not to use <C-P> since I like using that key to cycle 
+        through all the matches in the QuickFix window.  You can add
+        something similar to this in your |.vimrc| to get similar 
+        functionality.
+
+        On Windows use the ALT-< character to move through the YankRing.
+        To determine what character # these are go into insert mode
+        in a new buffer.  Press CTRL-V then ALT and the < key.
+        Leave insert mode, move the cursor onto the character
+        and press ga.  This will display the decimal, hex and octal
+        representation of the character.  In this case it is 172. >
+        if has('win32')
+            let g:yankring_replace_n_pkey = '<Char-172>'
+            let g:yankring_replace_n_nkey = '<Char-174>'
+            " Instead map these keys to moving through items in the quickfix window.
+            nnoremap <C-P> :cp<cr>
+            nnoremap <C-N> :cn<cr>
+        endif
     yankring_replace_n_nkey
 <       n - normal mode
         Default: <C-N>
+        If you do not want to open the YankRing window to choose your
+        selection, then you can paste (as usual) then use a YankRing 
+        mapping to cycle through items in the YankRing.  This is especially
+        useful if you know you recently used the text you are looking for.
         If you wish to cycle through the yankring, replacing the previously
-        pasted text with the previous yanked text you can repeatedly press
-        <C-N> (or whatever keystroke you choose to map it to).  This map 
-        moves forwards through the yankring, so you will retrieve your 
-        oldest yank.  But it is also useful if you press <C-P> too many 
-        times, you can cycle in the other direction if you passed the 
-        text you wanted.
+        pasted text with the next yanked text you can repeatedly press
+        <C-N> (or whatever keystroke you choose to map it to).  This map
+        moves forwards through the YankRing, so you will retrieve your
+        most recent yank.  
+
+        I prefer not to use <C-N> since I like using that key to cycle 
+        through all the matches in the QuickFix window.  You can add
+        something similar to this in your |.vimrc| to get similar 
+        functionality.
+
+        On Windows use the ALT-> character to move through the YankRing.
+        To determine what character # these are go into insert mode
+        in a new buffer.  Press CTRL-V then ALT and the > key.
+        Leave insert mode, move the cursor onto the character
+        and press ga.  This will display the decimal, hex and octal
+        representation of the character.  In this case it is 174. >
+        if has('win32')
+            let g:yankring_replace_n_pkey = '<Char-172>'
+            let g:yankring_replace_n_nkey = '<Char-174>'
+            " Instead map these keys to moving through items in the quickfix window.
+            nnoremap <C-P> :cp<cr>
+            nnoremap <C-N> :cn<cr>
+        endif
 
 3.3 Customizing Maps                             *yankring-custom-maps*
 
-The yankring plugin uses the yankring_n_keys global variable to create 
+The YankRing plugin uses the yankring_n_keys global variable to create 
 a number of defaults maps.  The maps are of the form: >
     nnoremap Y  :<C-U>YRYankCount 'Y'<CR>
 <
-When capital Y is pressed, the yankring will execute 'Y' and capture the
+When capital Y is pressed, the YankRing will execute 'Y' and capture the
 output from Vim.  But there are cases where you do not want the default
 behaviour of Vim, since you have customized some of these maps.
 
 In this case, I usually map Y to be |y$|, which makes it consistent with 
 the |D| and |C| operators.  The way yankring_n_keys works does not allow
 me to customize this behaviour.  Since many people may like to customize
-the behaviour of these maps the yankring will check to see if a
+the behaviour of these maps the YankRing will check to see if a
 function called YRRunAfterMaps() exists.  If it does, it will call 
 this function after it has created the maps.  So in my case, I created
 the following function in my |vimrc|: >
@@ -331,18 +446,18 @@ YRYankCount tells Vim to execute y$ instead.
 ==============================================================================
 4. Using the YankRing Window:                    *yankring-window*
 
-This is a new feature as of the 2.0 release.  The yankring uses a
+This is a new feature as of the 2.0 release.  The YankRing uses a
 separate split buffer to display the yankring.  There are many buffer
 specific maps that allow you to operate over the various elements from
 within the yankring.  
 
-To display the yankring buffer you can issue the :YRShow command.  For
+To display the YankRing buffer you can issue the :YRShow command.  For
 convience you can map a key, <F11>, to this command: >
 	:nnoremap <silent> <F11> :YRShow<CR>
 
 Status line~
-The first line in the yankring window is the status line. >
-    AutoClose=1;Cmds:p,P,d,r,a,u,q,<enter>,<space>;Help=?
+The first line in the YankRing window is the status line. >
+    AutoClose=1;ClipboardMonitor=1;Cmds:p,P,d,r,s,a,c,u,q,<enter>,<space>;Help=?
 <
 Help=?, pressing [?] will toggle the display of available commands the
 yankring window supports.  Pressing [?] again will remove the additional
@@ -355,9 +470,14 @@ commands below and when finished you can press [a] to toggle auto close on and
 press [q] to close the window.  The Cmds displayed are simply reminders of 
 the available keys.
 
+ClipboardMonitor=1 indicates the YankRing will monitor the clipboard (+)
+during Focus change events.  If the clipboard has changed since the YankRing
+last checked, the contents are added to the YankRing.  Pressing [c] allows
+you to quickly toggle this setting since it may not be useful at times.
+
 YankRing window key list~
 The following table lists the description of the keys that can be used
-in the yankring window.
+in the YankRing window.
 
   Key           Description~
   p             Puts text after the cursor.  In visual mode, all elements
@@ -367,16 +487,19 @@ in the yankring window.
   gp            Just like "p", but leave the cursor just after the new text.
   gP            Just like "P", but leave the cursor just after the new text.
   <CR>          Just like "p".
+  <Enter>       Just like "p".
   <2-LeftMouse> Just like "p".  Normal mode only.
-  r             Just like "p", but in visual mode if many lines are selected
-                it will paste these in reverse order.
   d             Removes the element from the yankring.  In visual mode all
                 elements selected will be removed.
+  r             Just like "p", but in visual mode if many lines are selected
+                it will paste these in reverse order.
+  s             Prompts you for a regex to search the YankRing and display
+                only matching items.
+  a             Toggles the g:yankring_window_auto_close setting.
+  u             Updates the YankRing window.
+  q             Closes the YankRing window.
   <Space>       Toggles the width of the vertical window by the
                 g:yankring_window_increment setting.
-  a             Toggles the g:yankring_window_auto_close setting.
-  u             Updates the yankring window.
-  q             Closes the yankring window.
   ?             Toggles the display of the help.
 
  
@@ -388,13 +511,13 @@ in the yankring window.
 The predefined mappings call some specific commands with special parameters.
 If you are going to create additional maps, it is important you mirror
 the same parameters.  Most of these commands have been made obsolete by 
-the yankring window, since it incorporates the functionality below, but
+the YankRing window, since it incorporates the functionality below, but
 through maps against a buffer, instead of commands.  This makes it much easier
 to use.
 
 
 5.1  YRToggle                                    *YRToggle*
-         Allows you to enable and disable the yankring quickly.  This 
+         Allows you to enable and disable the YankRing quickly.  This 
          command will remove the default maps and recreate them.
 
          Examples: >
@@ -430,13 +553,13 @@ to use.
         becomes interactive.  It uses YRShow to display the list and 
         allows you to choose which element to paste.  If a parameter
         is supplied it will paste that element from the yankring.  If the
-        number specified is outside of the yankring an error is returned.
+        number specified is outside of the YankRing an error is returned.
         You may want to create a separate mapping for this call. >
             nnoremap <silent> <Leader>yr :YRGetElem<CR>
 <       See also |YRSearch|.
  
         Examples:
-            Assume there are 10 elements in the yankring and element 6 is 
+            Assume there are 10 elements in the YankRing and element 6 is 
             at the top of the ring. >
             :YRGetElem     " Interactive mode, you choose from a list
             :YRGetElem 4   " Will paste element 5.
@@ -446,33 +569,34 @@ to use.
  
 
 5.6  YRGetMultiple                               *YRGetMultiple*
-        Will paste many elements from the yankring in one command.
-        If the number specified is less than 1, it is assumed you want
+        Will paste many elements from the YankRing in one command.
+        If the number specified is 1 or less, it is assumed you want
         just the current element pasted.  If the number specified is 
-        greater than the number of elements in the yankring, it is 
-        assumed you want all elements pasted.  See the 
-        |yankring-tutorial| for more examples.
+        greater than or equal to the number of elements in the yankring, 
+        it is assumed you want all elements pasted.  If a ! is included
+        as part of the command, paste the items in reverse order.  
+        See the |yankring-tutorial| for more examples.
 
         Examples:
-            Assume there are 10 elements in the yankring and element 6 is 
-            at the top of the ring. >
-            :YRGetMultiple 4   " Will paste elements 6,5,4,3
-            :YRGetMultiple     " Will paste element  6
-            :YRGetMultiple 12  " Will paste elements 6,5,4,3,2,1,10,9,8,7
-            :YRGetMultiple 99  " Will paste elements 6,5,4,3,2,1,10,9,8,7
-            :YRGetMultiple 0   " Will paste element  6
-<           See also |YRGetMultiple-example|.
+            Assume there are 10 elements in the YankRing. >
+            :YRGetMultiple  4   " Will paste elements 1,2,3,4
+            :YRGetMultiple! 4   " Will paste elements 4,3,2,1
+            :YRGetMultiple      " Will paste element  1
+            :YRGetMultiple  12  " Will paste elements 1,2,...,10
+            :YRGetMultiple  99  " Will paste elements 1,2,...,10
+            :YRGetMultiple  0   " Will paste element  1
  
 
 5.7  YRPush                                      *YRPush*
          Allows the user to "push" additional entries into the yankring.
          If you yanked text via a key mapping which does not use the 
-         yankring (or there is text on the clipboard) you can use this
+         YankRing (or there is text on the clipboard) you can use this
          command to add the text to the yankring.
 
          Examples: >
             :YRPush      " Push the "  register's contents 
             :YRPush '*'  " Push the "* register's contents (clipboard)
+            :YRPush '+'  " Push the "+ register's contents (clipboard)
             :YRPush 'a'  " Push the "a register's contents 
 <           See also |YRPush-example|.
              
@@ -487,7 +611,7 @@ to use.
             :YRPop      " Removes the highest numbered element from the 
                           yankring
             :YRPop 3    " Removes the 3rd element from the yankring
-            :YRPop 3,5  " Removes 5 elements from the yankring beginning
+            :YRPop 3,5  " Removes 5 elements from the YankRing beginning
                           at element 3
 <           See also |YRPop-example|.
              
@@ -497,7 +621,7 @@ to use.
          in normal mode and you are not specifying a range, this command
          will add the text to the yankring.
 
-         The goal of this command is to allow the yankring to be integrated
+         The goal of this command is to allow the YankRing to be integrated
          as seamlessly as possible with Vim.  So it supports counts and 
          registers.  If you create a mapping to it, you must pass as a
          parameter the action you want Vim to perform.  You could do the 
@@ -525,11 +649,11 @@ to use.
 <
          Examples:
                 yy - Adds the current line to the yankring.
-                dd - Adds the current line to the yankring and deletes it.
+                dd - Adds the current line to the YankRing and deletes it.
                5yw - Adds 5 words to the yankring.
               "ade - Deletes the word, and puts it into both the yankring
                      and the "a register.
-            10"zyy - Places 10 lines into both the yankring and the "z
+            10"zyy - Places 10 lines into both the YankRing and the "z
                      register.
             See also |yankring-tutorial|.
          
@@ -568,18 +692,18 @@ to use.
         blockwise-visual mode behaviours.  It supports counts and registers.
 
         Examples:
-            p   " Paste the current element from the yankring after the cursor
-            P   " Paste the current element from the yankring before the cursor
-           5p   " Paste the current element from the yankring after the cursor
+            p   " Paste the current element from the YankRing after the cursor
+            P   " Paste the current element from the YankRing before the cursor
+           5p   " Paste the current element from the YankRing after the cursor
                   5 times
-          "ap   " Ignore the yankring and paste the contents of register "a
-         5"ap   " Ignore the yankring and paste the contents of register "a
+          "ap   " Ignore the YankRing and paste the contents of register "a
+         5"ap   " Ignore the YankRing and paste the contents of register "a
                   5 times
             See also |yankring-tutorial|.
 
             
 5.13 YRReplace                                   *YRReplace*
-        The purpose of the yankring is to gain access to previously yanked
+        The purpose of the YankRing is to gain access to previously yanked
         (or deleted) elements.  This command will replace the previously 
         paste  with a different entry from the yankring.
         By default, I choose <C-P> (P for previous) to replace the last paste
@@ -597,14 +721,14 @@ to use.
 
             
 5.15 YRMapsDelete                                *YRMapsDelete*
-        This public function removes the yankring maps and disables
+        This public function removes the YankRing maps and disables
         the yankring.  This function is called by the YRToggle command.
 
             
 5.16 YRSearch                                    *YRSearch*
         This command is similar to |YRGetElem|.  The command takes
         one parameter which is a regular expression.  Similar to 
-        YRGetElem, it will display all items in the yankring that match
+        YRGetElem, it will display all items in the YankRing that match
         the regular expression.  It is also interactive, and will 
         prompt you to enter which match you wish pasted.
         See also |YRSearch-example|.
@@ -626,8 +750,8 @@ mapping: >
         five
 <                                                *YRShow-example*     
      Now yank (yy) each line separately starting at line 1.
-     Display the contents of the yankring by executing the command
-     YRShow, or pressing <F11>.  The contents of the yankring is
+     Display the contents of the YankRing by executing the command
+     YRShow, or pressing <F11>.  The contents of the YankRing is
      displayed in a new buffer.  The size, location and type of buffer
      is configurable via various options.  See section 3 for more details. >
         :YRShow or F11 
@@ -639,25 +763,25 @@ mapping: >
             4     two^@
             5     one^@
 <    Since we yanked the text starting at line 1 and finishing at
-     line 5, the most current yankring element is the last one, the
+     line 5, the most current YankRing element is the last one, the
      contents of line 5.  "five^@" is displayed, the "^@" is a 
      newline character (since we issued a "yy").
      
                                                  *yankring-window-example*     
      At this point, you have two options.  You can choose which element
-     from the yankring you wish to paste and press <CR> or 'p' or 'P' 
+     from the YankRing you wish to paste and press <CR> or 'p' or 'P' 
      and a variety of other options, see |yankring-window|. After pressing
-     the key, the yankring window will close (default behaviour).  Pressing
+     the key, the YankRing window will close (default behaviour).  Pressing
      '?' will display additional help for the commands that are active within
-     the yankring window.  Pressing '?' will toggle the help.
+     the YankRing window.  Pressing '?' will toggle the help.
 
-     You do not need to interact with the yankring using the yankring window.
+     You do not need to interact with the YankRing using the YankRing window.
      Using the window makes many tasks must easier, but for speed using some
      of the other maps can be preferrable if you know what you have yanked /
      deleted recently.  It was designed to work with Vim in the usual manner.
      You can press, 'p', to paste the last item in yanked or deleted.
 
-     Close the yankring window by pressing 'q' or F11 (which toggles it).
+     Close the YankRing window by pressing 'q' or F11 (which toggles it).
 
                                                  *YRReplace-example*     
      Now, go to the end of the file and press 'p'.  The resulting
@@ -722,12 +846,12 @@ mapping: >
         five
         three
 <   This is good, even though the keys 'ytr' has not been mapped
-    to YRYankCount, the yankring still pasted the most recently 
+    to YRYankCount, the YankRing still pasted the most recently 
     yanked text.  Since the text did not have a newline character
     the 'fou' was inserted after the 'f'.
 
     Now replace that previous paste with the current element from
-    the yankring by pressing <C-N>.  This is the result: >
+    the YankRing by pressing <C-N>.  This is the result: >
         one
         two
         three
@@ -735,7 +859,7 @@ mapping: >
         one
         five
         three
-<   The #1 entry in the yankring is still the line "five@".  When
+<   The #1 entry in the YankRing is still the line "five@".  When
     choosing the next entry, it wraps around to the last entry in
     the yankring, element #5.  The 'fou' was replaced with 'one^@'.
     Since it had a newline character in it (when it was yanked) the
@@ -782,7 +906,7 @@ mapping: >
         From the clipboard
 <   YRPush '+' adds the value of the register '+' to the yankring, but it
     also adds its contents to the default Vim paste buffer.  So pressing
-    'p' pasted this text.  Adding a new value to the yankring we have
+    'p' pasted this text.  Adding a new value to the YankRing we have
     repositioned it which you can see with: >
         :YRShow or F11
             --- YankRing ---
@@ -801,7 +925,7 @@ mapping: >
         three
         four
         five 
-<   Now run this command to clear the yankring to start over: >
+<   Now run this command to clear the YankRing to start over: >
         :YRClear
 <
     Issue a 'yy' on each of the 5 lines.  If you run the YRShow command you
@@ -815,25 +939,25 @@ mapping: >
             4     two^@
             5     one^@
 <                                                *any-item-example*     
-    If you need to quickly browse the yankring to determine which element you
-    wish to paste you can simply press 'p' or <CR> on any element displayed in
-    the yankring window.  Press '?' for more detailed description of the
-    commands available.
+    If you need to quickly browse the YankRing to determine which element you
+    wish to paste you can simply press 'p' or <CR> or <Enter> on any element
+    displayed in the YankRing window.  Press '?' for more detailed description
+    of the commands available.
 
-    Using the yankring window can be much faster if you do not want to cycle
-    through the yankring using <C-P> and <C-N> to find the element.   
+    Using the YankRing window can be much faster if you do not want to cycle
+    through the YankRing using <C-P> and <C-N> to find the element.   
 
                                                  *multiple-items-example*     
     There are times when you need to move through a buffer capturing many
     different lines (or snippets of code) and eventually want to switch 
     buffers and paste these elements.  With some advance planning you can do 
-    this without the yankring by issuing commands of the form: >
+    this without the YankRing by issuing commands of the form: >
         "ayy
         "Ayy
 <   When specifying the register using UPPERCASE, Vim appends the yanked text
     to register "a, instead of replacing it.  Many times you forget the
     advance planning (or didn't even know about this great feature) you can 
-    use the yankring window to do this easily.  If this is the current
+    use the YankRing window to do this easily.  If this is the current
     yankring: >
         :YRShow or F11
             --- YankRing ---
@@ -843,7 +967,7 @@ mapping: >
             3     three^@
             4     two^@
             5     one^@
-<   The yankring works in |visual-mode|.  To demonstrate move the cursor in
+<   The YankRing works in |visual-mode|.  To demonstrate move the cursor in
     the buffer to the line with 'two'.  Press 'F11' to display the yankring
     window.  Move the cursor to element 2, press 'V' to enable
     |linewise-visual| mode and then press 'j' twice.  This should have
@@ -859,7 +983,7 @@ mapping: >
         five 
 <   You can see here it has pasted four, three, two after the second line of
     the buffer.  Now press 'u' to undo our last change.  Leave the cursor
-    on the second line 'two'.  Press 'F11' to show the yankring again.
+    on the second line 'two'.  Press 'F11' to show the YankRing again.
     Visually select the same lines, but this time press 'r' instead of 'p'.
     'r' is for reverse, so it will paste the following: >
         one
@@ -871,24 +995,35 @@ mapping: >
         four
         five 
 <   
+                                                 *YRGetMultiple-example*     
+    The same behaviour listed above (by visually selecting items in the
+    YankRing window) can be achieved using the YRGetMultiple command.
+    Assume there are 10 elements in the YankRing. >
+        :YRGetMultiple  4   " Will paste elements 1,2,3,4
+        :YRGetMultiple! 4   " Will paste elements 4,3,2,1
+        :YRGetMultiple      " Will paste element  1
+        :YRGetMultiple  12  " Will paste elements 1,2,...,10
+        :YRGetMultiple  99  " Will paste elements 1,2,...,10
+        :YRGetMultiple  0   " Will paste element  1
+<   
                                                  *YRSearch-example*     
-    The default size of the yankring is 100 elements.  It can be
-    tedious searching through the yankring to find the element you
+    The default size of the YankRing is 100 elements.  It can be
+    tedious searching through the YankRing to find the element you
     need.  YRSearch is similar to YRShow except it will limit the 
     items displayed to only those items matching the regex provided. >
         :YRShow 
             --- YankRing ---
             Elem  Content
-            4     Three Mississippi
-            3     Two Mississippi
-            2     One Mississippi
-            1     @", '\\/.*$^~[]' )
+            1     Three Mississippi
+            2     Two Mississippi
+            3     One Mississippi
+            4     @", '\\/.*$^~[]' )
         :YRSearch Mississippi
             --- YankRing ---
             Elem  Content
-            4     Three Mississippi
-            3     Two Mississippi
-            2     One Mississippi
+            1     Three Mississippi
+            2     Two Mississippi
+            3     One Mississippi
 <   Consider some items which require escaping the search string: >
         :YRSearch @", '\\
             --- YankRing ---
@@ -911,8 +1046,8 @@ mapping: >
             1     @", '\\/.*$^~[]' )
                                                  
 <                                                *YRPop-example*     
-    You can remove any element from the yankring by pressing pressing 'd' from
-    within the yankring window.  Visual mode is also supported to remove more
+    You can remove any element from the YankRing by pressing pressing 'd' from
+    within the YankRing window.  Visual mode is also supported to remove more
     than one element at a time.  >
         :YRShow 
             --- YankRing ---
@@ -931,7 +1066,7 @@ mapping: >
 <                                                *yankring-visual-example*     
     There are 3 visual modes and all are supported.  Any visually selected 
     text is added to the yankring.  You can try the various modes.  Move 
-    the cursor to inside the buffer (not the yankring window).
+    the cursor to inside the buffer (not the YankRing window).
 
     |characterwise-visual|
         Go to line 1, press 'v' and move using the cursor keys until you have
@@ -960,49 +1095,68 @@ mapping: >
 <   
                                                  *global-example*     
     Using Vim's |:global| command can be very useful at times.  The example
-    adds all rows (in a buffer) to the yankring if they have a certain
+    adds all rows (in a buffer) to the YankRing if they have a certain
     phrase: >
         :g/addme/YRYankCount 'yy'
 <   This is the breakdown for the above command: >
         :g                  - for each line in the buffer
         /addme              - check if the string "addme" is in the line
-        /YRYankCount 'yy'   - Ask the yankring to execute the 'yy' command
+        /YRYankCount 'yy'   - Ask the YankRing to execute the 'yy' command
 
 
 ==============================================================================
 7. History                                       *yankring-history*
 
+  6.0: October 25, 2008: 
+         NF: The YankRing now maintains the history in a file.  This means
+             if you are running multiple instances of Vim, they all see
+             the same yankring.
+         NF: The location and name of the file is configurable by the user.
+         NF: The g:yankring_separator is no longer used and has been removed.
+         NF: The g:yankring_max_element_length can be used to limit the size 
+             of an element in the yankring.
+         NF: The g:yankring_share_between_instances can be used to indicate
+             whether each instance of Vim running on a machine should share
+             the history file or whether each should have their own 
+             individual history file.
+         NF: The g:yankring_clipboard_monitor can be used to indicate
+             whether changes to the system clipboard should be added to the
+             YankRing (default is on).
+         NF: The YankRing window can toggle the clipboard monitor by pressing
+             'c'.  See the help in the window by pressing ?.
+         NF: Added some highlighting to the YankRing window (Marty Grenfell).
+
   5.0: September 21, 2008: 
-         NF: The yankring can recognize certain Vim commands which do not
+         NF: The YankRing can recognize certain Vim commands which do not
              change the contents of a buffer and not attempt to capture it.
          NF: The global variables which allow you to customize the behaviour
              are now space separated instead of comma separated.  This
              provides greater flexibility but will require you to modify
              your vimrc (if you have customized it). (Andy Wokula)
-         BF: If using <C-O> from within insert mode, the yankring inserted
+         BF: If using <C-O> from within insert mode, the YankRing inserted
              characters into the buffer instead of capturing the changes,
              this was fixed by Andy Wokula (Agathoklis Hatzimanikas).
-         BF: The yankring did not properly account for all the different
+         BF: The YankRing did not properly account for all the different
              forms of counts "5yy" worked but "y5y" did not (Edwin Shao).
 
   4.1: August 9, 2008: 
-         NF: The yankring now allows you to override which operators should
+         NF: The YankRing now allows you to override which operators should
              be ignored (yankring_ignore_operator).  By default this is
              set for the standard Vim operators which do not modify any
              registers (Examples: = and gu) (Andy Wokula).
-         NF: The yankring did not map v_x (Matt Tolton).
+         NF: The YankRing did not map v_x (Matt Tolton).
          BF: The expression register (quote=) was not accounted for correctly
              (Agathoklis Hatzimanikas).
          BF: Using the v:operator variable must be escaped when used in
              a regular expression.
 
   4.0: June 24, 2008: 
-         NF: The yankring by default now captures all |text-objects| and 
+         NF: The YankRing by default now captures all |text-objects| and 
              all motions (|motion.txt|) which Vim supports.  Version 3.0 only
              supported a subset of the basic motion commands.
          NF: Prior to this version only predefined maps triggered the 
              capture of data into the yankring.  These maps only supported
-             yanks and deletes.  The yankring now also supports
+             yanks and deletes.  The YankRing now also supports
              operator-pending mode, which allows a greater range of operations
              to be automatically captured and added to the yankring.  
              Operating pending mode functionality requires Vim 7.2 or Vim 7.1
@@ -1011,13 +1165,13 @@ mapping: >
          NF: Prior to this version only yanks and deletes were registered
              in the yankring.  Changes are now also captured into the
              yankring.
-         NF: The yankring will also capture the system cliboard when focus is
+         NF: The YankRing will also capture the system cliboard when focus is
              returned to the vim window.  This is useful if you copy text
              between applications.
-         NF: The yankring window always opened bottom horizontal.  Now it
+         NF: The YankRing window always opened bottom horizontal.  Now it
              can be opened top or bottom and horizontal or vertically.
              This can be controlled via variables in your .vimrc.
-         BF: The yankring has an option to persist between instances
+         BF: The YankRing has an option to persist between instances
              of Vim by storing the values in global variables within
              the viminfo.  This has led to some unusual ordering of
              items in the ring from conflicts between instances.
@@ -1031,11 +1185,11 @@ mapping: >
              applications.
 
   3.0: September 7, 2007: 
-         NF: Converted the yankring to use the new Vim7's List object which
+         NF: Converted the YankRing to use the new Vim7's List object which
              means it is no longer compatible with Vim6.
-         NF: By default the yankring will now maintain the yankring's items
+         NF: By default the YankRing will now maintain the yankring's items
              persistently by default.  It does this via the |viminfo| file.
-             This means the contents of the yankring rely on the internal
+             This means the contents of the YankRing rely on the internal
              variables of only 1 Vim instance.
          BF: YRToggle was not unmapping 'gp' and 'gP'.
          BF: YRSearch prompted the user for a regex even if one was provided
@@ -1049,18 +1203,18 @@ mapping: >
 
   2.2: October 19, 2005: 
          BF: If you pressed '?' to toggle the display of the help in the
-             yankring window, the window would close.  This also applied to
+             YankRing window, the window would close.  This also applied to
              'a', which allowed you to toggle the autoclose feature.
 
   2.1: October 11, 2005: 
-         NF: Added the ability for the yankring to override Vim's numbered 
+         NF: Added the ability for the YankRing to override Vim's numbered 
              registers.  Instead of the numbered registers holding the last
              yanked value, and the 9 previous deletes, they will now reflect
              the top 10 items in the yankring.  This allows you to reference
              them directly with "5p.
 
   2.0: August 20, 2005: 
-         NF: Much improved usability, the yankring now has a "GUI" to service 
+         NF: Much improved usability, the YankRing now has a "GUI" to service 
              the yankring.  If YRShow or YRSearch is used, a split buffer is
              opened which displays all the elements in the yankring.  There
              are a number of maps that allow you to interact with the
@@ -1070,7 +1224,7 @@ mapping: >
 	     NF: YRPop can now delete any items from the yankring, rather 
 		     that just from the top.
 	     NF: YRSetTop has been removed, it is no longer required as the
-		     internal representation of the yankring has changed.
+		     internal representation of the YankRing has changed.
 	     BF: If g:yankring_ignore_duplicate is set (which is the default)
 		     you could get some unpredicable results when moving 
 			 backwards and forwards (<C-P> and <C-N>) through the 
@@ -1096,12 +1250,12 @@ mapping: >
                 "="X"<CR>P
  
   1.5: March 30, 2005: 
-         NF: The yankring now respects the cpoptions setting, if 'y' is
+         NF: The YankRing now respects the cpoptions setting, if 'y' is
              included and you press '.', the previous yank command is executed
              and added to the yankring.  You can also add this behaviour by
              setting this in your |vimrc|: >
                 let g:yankring_dot_repeat_yank = 1
-<        NF: Duplicates will not be added to the yankring by default.  If
+<        NF: Duplicates will not be added to the YankRing by default.  If
              a duplicate is found, the element will be moved to the top
              of the yankring.  This can be controlled by setting this in 
              your |vimrc|: >
@@ -1110,21 +1264,21 @@ mapping: >
              insert garbage.
 
   1.4: March 28, 2005: 
-         NF: YRToggle has been updated.  If you toggle the yankring off
+         NF: YRToggle has been updated.  If you toggle the YankRing off
              (disable) the maps it creates are removed.  Calling YRToggle
              again will recreate the maps.  This truly disables the yankring,
              where the previous version attempted to do this via code.
          BF: Using the '.' operator was not correctly replaying operations
              that did not move text in some way (g~t_) changed the case
              of the text but a '.' did not replay it.
-         BF: When replacing previously pasted text the yankring did not
+         BF: When replacing previously pasted text the YankRing did not
              respect what key was used to paste the text originally.
              All replaced items were pasted using 'p', even if you had
              originally pasted the text with 'P'.
 
   1.3: March 16, 2005: 
          BF: The '.' operator did not handle the <<, >> shift operator.
-             Pressing '.' would result in the previous yankring operation
+             Pressing '.' would result in the previous YankRing operation
              instead of repeating the shift.
 
   1.2: March 14, 2005: 
@@ -1139,7 +1293,7 @@ mapping: >
          NF: Added support for the black hole register |quote_|.
          NF: Custom Maps allows the user to more finely tune the yankring
              maps to perform whatever action they require.  This function,
-             YRRunAfterMaps(), is run automatically after the yankring 
+             YRRunAfterMaps(), is run automatically after the YankRing 
              creates it's default mappings.  See |yankring-custom-maps|.
          NF: Added some more default maps by extending the yankring_n_keys
              variable.  It now contains:
