@@ -1107,6 +1107,11 @@ mapping: >
 ==============================================================================
 7. History                                       *yankring-history*
 
+  6.1: October 31, 2008: 
+         BF: If the g:yankring_history_dir contains spaces (default on
+             Windows) an error was reported.  A simple work around was to 
+             let g:yankring_history_dir = 'c:\Vim' or no spaces (Matt).  
+
   6.0: October 25, 2008: 
          NF: The YankRing now maintains the history in a file.  This means
              if you are running multiple instances of Vim, they all see

@@ -1,8 +1,8 @@
 " yankring.vim - Yank / Delete Ring for Vim
 " ---------------------------------------------------------------
-" Version:  6.0
+" Version:  6.1
 " Authors:  David Fishburn <dfishburn.vim@gmail.com>
-" Last Modified: 2008 Oct 28
+" Last Modified: 2008 Oct 31
 " Script:   http://www.vim.org/scripts/script.php?script_id=1234
 " Based On: Mocked up version by Yegappan Lakshmanan
 "           http://groups.yahoo.com/group/vim/post?act=reply&messageNum=34406
@@ -18,7 +18,7 @@ if v:version < 700
   finish
 endif
 
-let loaded_yankring = 60
+let loaded_yankring = 61
 
 let s:yr_has_voperator     = 0
 if v:version > 701 || ( v:version == 701 && has("patch205") )
@@ -219,12 +219,11 @@ let s:yr_buffer_last       = -1
 let s:yr_buffer_id         = -1
 let s:yr_search            = ""
 let s:yr_history_last_upd  = 0
-let s:yr_history_file      = escape(
+let s:yr_history_file      = 
             \ g:yankring_history_dir.'/'.
             \ g:yankring_history_file.
             \ (g:yankring_share_between_instances==1?'':'_'.v:servername).
-            \ '.txt',
-            \ ' ')
+            \ '.txt'
 
 
 " Vim window size is changed by the yankring plugin or not
