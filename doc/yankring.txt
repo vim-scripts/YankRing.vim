@@ -1,7 +1,7 @@
 *yankring.txt*      For Vim version 7.0. 
 
-Author:	        David Fishburn                             October 25, 2008
-Version:        6.0
+Author:	        David Fishburn                             November 14, 2008
+Version:        7.0
 
 For instructions on installing this file, type
 	:help add-local-help |add-local-help| inside Vim.
@@ -252,6 +252,16 @@ your |.vimrc|.
         of the clipboard to the YankRing.  To disable this feature 
         you can put the following in your |vimrc| >
             let g:yankring_clipboard_monitor = 0
+    yankring_paste_check_default_buffer
+<       Default: 1
+        If the default register has changed without the YankRing registering
+        the change the YankRing will paste the top item from the history
+		rather than what is currently in the default register.
+        This option allows you to control the behaviour.  Plugins can
+        intentionally change the default buffer which the YankRing has
+		no way to noticing.  To disable this feature you can put the following
+		in your |vimrc| >
+            let g:yankring_paste_check_default_buffer = 0
 
 <
 3.2 Default Keys                                 *yankring-mappings*
@@ -298,10 +308,11 @@ variables in your |vimrc|.
         keys you wished mapped.  >
             let g:yankring_o_keys = 'b B w W e E d y $ G ; iw iW aw aW'
     yankring_zap_keys 
-<       Default: 'f F t T'
+<       Default: 'f F t T / ?'
         omaps are enough for most operations except for f and t.
-        These motions prompt the user for the character they should
-        act upon.  These must be treated as a special case in YankRing. >
+        These motions prompt the user for a character or string which 
+        they should act upon.  These must be treated as a special case 
+        in YankRing. >
             let g:yankring_zap_keys = 'f t'
     yankring_ignore_operator
 <       Default: 'g~ gu gU ! = gq g? > < zf g@'
@@ -376,13 +387,16 @@ variables in your |vimrc|.
         Leave insert mode, move the cursor onto the character
         and press ga.  This will display the decimal, hex and octal
         representation of the character.  In this case it is 172. >
-        if has('win32')
-            let g:yankring_replace_n_pkey = '<Char-172>'
-            let g:yankring_replace_n_nkey = '<Char-174>'
-            " Instead map these keys to moving through items in the quickfix window.
-            nnoremap <C-P> :cp<cr>
-            nnoremap <C-N> :cn<cr>
-        endif
+            if has('win32')
+                let g:yankring_replace_n_pkey = '<Char-172>'
+                let g:yankring_replace_n_nkey = '<Char-174>'
+                " Instead map these keys to moving through items in the quickfix window.
+                nnoremap <C-P> :cp<cr>
+                nnoremap <C-N> :cn<cr>
+            endif
+<       Other users have also stated that this will work: >
+            let g:yankring_replace_n_pkey = '<m-p>'
+            let g:yankring_replace_n_nkey = '<m-n>'
     yankring_replace_n_nkey
 <       n - normal mode
         Default: <C-N>
@@ -414,6 +428,9 @@ variables in your |vimrc|.
             nnoremap <C-P> :cp<cr>
             nnoremap <C-N> :cn<cr>
         endif
+<       Other users have also stated that this will work: >
+            let g:yankring_replace_n_pkey = '<m-p>'
+            let g:yankring_replace_n_nkey = '<m-n>'
 
 3.3 Customizing Maps                             *yankring-custom-maps*
 
@@ -1106,6 +1123,33 @@ mapping: >
 
 ==============================================================================
 7. History                                       *yankring-history*
+
+  7.0: November 14, 2008: 
+         NF: Added support for the / and ? motions so that y/search is 
+             supported (Vasilii Pascal).
+         NF: When the YankRing window is displayed (or updated) an additional 
+             check is made against the default register.  If it has changed
+             since the YankRing recorded it, the value will be added to the 
+             history.
+         NF: Added support for more motions h, j, k, l, H, M, L, ^, 0, -, +, _.
+             And a pile of g motions g_, g^, gm, g$, gk, gj, gg, ge, gE.
+         NF: The YankRing window will display a message it is operating
+             in a limited mode if not using Vim 7.2 or the correct patch 
+             level.
+         BF: Correction to some internal code which could lead to an 
+             endless loop (John Beckett).
+         BF: Opening and closing the YankRing window with "set report=0"
+             reported "1 line less" messages (Bill McCarthy).
+         BF: Changed the default value of g:yankring_paste_check_default_buffer
+		     to check if the default paste buffer has changed when pressing
+			 'p'.  For example, if a plugin has changed the default registers
+			 it will be pasted rather than the top item from the YankRing.
+         BF: YRMapsDelete did not remove all the maps created by the YankRing.
+         BF: Under particular circumstances, yanking text with embedded @
+             characters were not properly stored and retrieved from the
+             YankRing (Andrew Long).
+         BF: Changed to use xmaps instead of vmaps so that the maps only work
+             in visual mode and not select mode (David Liang).
 
   6.1: October 31, 2008: 
          BF: If the g:yankring_history_dir contains spaces (default on

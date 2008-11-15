@@ -1,8 +1,8 @@
 " yankring.vim - Yank / Delete Ring for Vim
 " ---------------------------------------------------------------
-" Version:  6.1
+" Version:  7.0
 " Authors:  David Fishburn <dfishburn.vim@gmail.com>
-" Last Modified: 2008 Oct 31
+" Last Modified: 2008 Nov 14
 " Script:   http://www.vim.org/scripts/script.php?script_id=1234
 " Based On: Mocked up version by Yegappan Lakshmanan
 "           http://groups.yahoo.com/group/vim/post?act=reply&messageNum=34406
@@ -18,7 +18,7 @@ if v:version < 700
   finish
 endif
 
-let loaded_yankring = 61
+let loaded_yankring = 70
 
 let s:yr_has_voperator     = 0
 if v:version > 701 || ( v:version == 701 && has("patch205") )
@@ -146,14 +146,14 @@ endif
 
 " Allow the user to specify what operator pending motions to map
 if !exists('g:yankring_o_keys')
-    " let g:yankring_o_keys = 'b,B,w,W,e,E,f,F,t,T,d,y,$,G,;'
     " o-motions and text objects, without zap-to-char motions
-    let g:yankring_o_keys =  'b B w W e E d y $ G ;'
+    let g:yankring_o_keys  = 'b B w W e E d h j k l H M L y G ^ 0 $ , ;'
+    let g:yankring_o_keys .= ' g_  g^ gm g$ gk gj gg ge gE - + _ '
     let g:yankring_o_keys .= ' iw iW aw aW as is ap ip a] a[ i] i[ a) a( ab i) i( ib a> a< i> i< at it a} a{ aB i} i{ iB a" a'' a` i" i'' i`'
 endif
 
 if !exists('g:yankring_zap_keys')
-    let g:yankring_zap_keys = 'f F t T'
+    let g:yankring_zap_keys = 'f F t T / ?'
 endif
 
 " Allow the user to specify what operator pending motions to map
@@ -162,7 +162,7 @@ if !exists('g:yankring_ignore_operator')
 endif
 let g:yankring_ignore_operator = ' '.g:yankring_ignore_operator.' '
 
-" Whether we sould map the . operator
+" Whether we should map the . operator
 if !exists('g:yankring_map_dot')
     let g:yankring_map_dot = 1
 endif
@@ -197,7 +197,7 @@ if !exists('g:yankring_paste_v_akey')
 endif
 
 if !exists('g:yankring_paste_check_default_buffer')
-    let g:yankring_paste_check_default_buffer = '0'
+    let g:yankring_paste_check_default_buffer = 1
 endif
 
 if !exists('g:yankring_replace_n_pkey')
@@ -265,7 +265,8 @@ function! s:YRDisplayElem(disp_nbr, script_var)
     endif
 
     let elem = matchstr(a:script_var, '^.*\ze,.*$')
-    let elem = substitute(elem, '@@@', '@', 'g')
+    let elem = substitute(elem, '\%(\\\)\@<!@@@', '\\n', 'g')
+    let elem = substitute(elem, '\\@', '@', 'g')
     let length = strlen(elem)
     " Fancy trick to align them all regardless of how many
     " digits the element # is
@@ -316,6 +317,17 @@ function! s:YRShow(...)
     " always run the search again.
     let s:yr_search = ""
 
+    " It is possible for registers to be changed outside of the 
+    " maps of the YankRing.  Perform this quick check when we
+    " show the contents (or when it is refreshed).
+    if g:yankring_paste_check_default_buffer == 1 && 
+                \ getreg('"') != s:yr_prev_reg_unnamed
+        " The user has performed a yank / delete operation
+        " outside of the yankring maps.  Add this 
+        " value to the yankring.
+        call YRRecord('"')
+    endif
+
     " List is shown in order of replacement
     " assuming using previous yanks
     let output = "--- YankRing ---\n"
@@ -339,12 +351,40 @@ endfunction
 " Used in omaps if a following character is required 
 " like with motions (f,t)
 function! s:YRGetChar()
-    echomsg "YR:Enter character:"
+    let msg = "YR:Enter character:"
+    echomsg msg
     let c = getchar()
     if c =~ '^\d\+$'
         let c = nr2char(c)
+        echomsg msg.c
     endif
     return c
+endfunction
+
+
+" Used in omaps if a following string is required 
+" like with motions (/,?)
+function! s:YRGetSearch()
+    let msg = "YR:Enter string:"
+    echomsg msg
+    let str = ''
+    while 1==1
+        let c = getchar()
+        if c =~ '^\d\+$'
+            let c = nr2char(c)
+            if c == "\<C-C>"
+                return c
+            endif
+            if c == "\<CR>"
+                break
+            endif
+            let str = str.c
+            echomsg msg.str
+        else
+            break
+        endif
+    endwhile
+    return str
 endfunction
  
 
@@ -495,10 +535,7 @@ function! s:YRSearch(...)
     let output        = output . "Elem  Content\n"
     let valid_choices = []
 
-    let found_idx = index(s:yr_history_list, s:yr_search)
-    while found_idx != -1
-        let search_result = filter(copy(s:yr_history_list), "v:val =~ '".s:yr_search."'")
-    endwhile
+    let search_result = filter(copy(s:yr_history_list), "v:val =~ '".s:yr_search."'")
 
     let disp_item_nr = 1
 
@@ -736,6 +773,15 @@ function! YRRecord3()
         return ""
     endif
 
+    if v:register == '"'
+        " If the change has occurred via an omap, we must delay
+        " the capture of the default register until this event
+        " since register updates are not reflected until the 
+        " omap function completes
+        let s:yr_prev_reg_unnamed = getreg('"')
+        let s:yr_prev_reg_small   = getreg('-')
+    endif
+
     " Add item to list
     " This will also account for duplicates.
     call s:YRMRUAdd( 's:yr_history_list'
@@ -801,6 +847,12 @@ endfunction
 " Adds this value to the yankring.
 function! s:YRDoRepeat() 
     let dorepeat = 0
+
+    if s:yr_has_voperator == 1
+        " Let Vim handle the repeat, just capture the updates
+        " as usual.
+        return 0
+    endif
 
     if s:yr_prev_op_code =~ '^c'
         " You cannot repeat change operations, let Vim's
@@ -1127,7 +1179,7 @@ function! s:YRPaste(replace_last_paste_selection, nextvalue, direction, ...)
             " This was necessary prior to version 4.0 since we did not 
             " capture as many items as 4.0 and above does. (A. Budden)
             if g:yankring_paste_check_default_buffer == 1 && 
-                        \ getreg(default_buffer) != s:YRGetValElemNbr(0,'v')
+                        \ getreg(default_buffer) != s:yr_prev_reg_unnamed
                 " The user has performed a yank / delete operation
                 " outside of the yankring maps.  First, add this 
                 " value to the yankring.
@@ -1238,10 +1290,16 @@ endfunction
 function! YRMapsExpression(sid, motion, ...)
     let cmds     = a:motion
 
-    " OLD ANDY
     " Check if we are in operator-pending mode
-    if cmds =~? '\(f\|t\)'
-        let zapto = a:0==0 ? "" : s:YRGetChar()
+    if cmds =~ '\('.substitute(g:yankring_zap_keys, ' ', '\\|', 'g').'\)'
+        if cmds =~ '\(/\|?\)'
+            let zapto = a:0==0 ? "" : s:YRGetSearch()
+            if zapto != "\<C-C>"
+                let zapto = zapto . "\<CR>"
+            endif
+        else
+            let zapto = a:0==0 ? "" : s:YRGetChar()
+        endif
 
         if zapto == "\<C-C>"
             " Abort if the user hits Control C
@@ -1250,9 +1308,6 @@ function! YRMapsExpression(sid, motion, ...)
         endif
 
         let cmds = cmds . zapto
-        " if v:operator =~ '[cdy]'
-        "     let cmds .= a:sid. "record"
-        " endif
     endif
 
     " There are a variety of commands which do not change the
@@ -1271,7 +1326,7 @@ function! YRMapsExpression(sid, motion, ...)
             " The InsertLeave event will handle the motions
             " that place us in insert mode and record the
             " changes when insert mode ends.
-            let cmds .= a:sid. "record"
+            let cmds .= a:sid. "yrrecord"
         endif
     endif
 
@@ -1291,7 +1346,7 @@ function! s:YRMapsCreate()
         " exec 'nnoremap <silent>'.key." :<C-U>YRYankCount '".key."'<CR>"
         " exec 'nnoremap <silent>'.key." :<C-U>YRYankCount '".key."'<CR>"
         " Andy Wokula's suggestion
-        exec 'nmap' key key."<SID>record"
+        exec 'nmap' key key."<SID>yrrecord"
     endfor
 
     " 7.1.patch205 introduces the v:operator function which was essential
@@ -1316,13 +1371,13 @@ function! s:YRMapsCreate()
         endif
     endif
     if g:yankring_v_key != ''
-        exec 'vnoremap <silent>'.g:yankring_v_key." :YRYankRange 'v'<CR>"
+        exec 'xnoremap <silent>'.g:yankring_v_key." :YRYankRange 'v'<CR>"
     endif
     if g:yankring_del_v_key != ''
         for v_map in split(g:yankring_del_v_key)
             if strlen(v_map) > 0
                 try
-                    exec 'vnoremap <silent>'.v_map." :YRDeleteRange 'v'<CR>"
+                    exec 'xnoremap <silent>'.v_map." :YRDeleteRange 'v'<CR>"
                 catch
                 endtry
             endif
@@ -1341,10 +1396,10 @@ function! s:YRMapsCreate()
         endif
     endif
     if g:yankring_paste_v_bkey != ''
-        exec 'vnoremap <silent>'.g:yankring_paste_v_bkey." :<C-U>YRPaste 'P', 'v'<CR>"
+        exec 'xnoremap <silent>'.g:yankring_paste_v_bkey." :<C-U>YRPaste 'P', 'v'<CR>"
     endif
     if g:yankring_paste_v_akey != ''
-        exec 'vnoremap <silent>'.g:yankring_paste_v_akey." :<C-U>YRPaste 'p', 'v'<CR>"
+        exec 'xnoremap <silent>'.g:yankring_paste_v_akey." :<C-U>YRPaste 'p', 'v'<CR>"
     endif
     if g:yankring_replace_n_pkey != ''
         exec 'nnoremap <silent>'.g:yankring_replace_n_pkey." :<C-U>YRReplace '-1', 'P'<CR>"
@@ -1372,7 +1427,14 @@ function! s:YRMapsDelete()
     endfor
 
     let o_maps = split(g:yankring_o_keys)
-    " Loop through and prompt the user for all buffer connection parameters.
+    for key in o_maps
+        try
+            silent! exec 'ounmap' key
+        catch
+        endtry
+    endfor
+
+    let o_maps = split(g:yankring_zap_keys)
     for key in o_maps
         try
             silent! exec 'ounmap' key
@@ -1438,7 +1500,11 @@ function! s:YRGetValElemNbr( position, type )
             return matchstr(elem, '^.*,\zs.*$')
         else
             let elem = matchstr(elem, '^.*\ze,.*$')
-            return substitute(elem, '@@@', "\n", 'g')
+            " Match three @@@ in a row as long as it is not
+            " preceeded by a \
+            let elem = substitute(elem, '\%(\\\)\@<!@@@', "\n", 'g')
+            let elem = substitute(elem, '\\@', '@', 'g')
+            return elem
         endif
     else
         return -1
@@ -1481,6 +1547,7 @@ function! s:YRMRUAdd( mru_list, element, element_type )
     if g:yankring_max_element_length != 0
         let elem    = strpart(a:element, 0, g:yankring_max_element_length)
     endif
+    let elem    = escape(elem, '@')
     let elem    = substitute(elem, "\n", '@@@', 'g')
     " Append the regtype to the end so we have it available
     let elem    = elem.",".a:element_type
@@ -1597,6 +1664,10 @@ function! s:YRWindowStatus(show_help)
                 \ ';Cmds:<enter>,[g]p,[p]P,d,r,s,a,c,u,q,<space>;Help=?'.
                 \ (s:yr_search==""?"":';SearchRegEx='.s:yr_search)
 
+    if s:yr_has_voperator == 0
+        let msg = msg . "\nYankRing has limited functionality without Vim 7.2 or higher"
+    endif
+
     " Toggle help by checking the first line of the buffer
     if a:show_help == 1 && getline(1) !~ 'selection'
         let full_help = 1
@@ -1627,6 +1698,10 @@ function! s:YRWindowStatus(show_help)
     call histdel("search", -1)
 
     silent! 0put =msg
+
+    " Erase it's contents to the blackhole
+    silent! exec '%g/^\s*$/delete _'
+    call histdel("search", -1)
 
     call cursor(1,1)
     if full_help == 0
@@ -1755,18 +1830,18 @@ function! s:YRWindowOpen(results)
     " Create a mapping to act upon the yankring
     nnoremap <buffer> <silent> <2-LeftMouse> :call <SID>YRWindowActionN('p' ,'n')<CR>
     nnoremap <buffer> <silent> <CR>          :call <SID>YRWindowActionN('p' ,'n')<CR>
-    vnoremap <buffer> <silent> <CR>          :call <SID>YRWindowAction ('p' ,'v')<CR>
+    xnoremap <buffer> <silent> <CR>          :call <SID>YRWindowAction ('p' ,'v')<CR>
     nnoremap <buffer> <silent> p             :call <SID>YRWindowActionN('p' ,'n')<CR>
-    vnoremap <buffer> <silent> p             :call <SID>YRWindowAction ('p' ,'v')<CR>
+    xnoremap <buffer> <silent> p             :call <SID>YRWindowAction ('p' ,'v')<CR>
     nnoremap <buffer> <silent> P             :call <SID>YRWindowActionN('P' ,'n')<CR>
-    vnoremap <buffer> <silent> P             :call <SID>YRWindowAction ('P' ,'v')<CR>
+    xnoremap <buffer> <silent> P             :call <SID>YRWindowAction ('P' ,'v')<CR>
     nnoremap <buffer> <silent> gp            :call <SID>YRWindowActionN('gp','n')<CR>
-    vnoremap <buffer> <silent> gp            :call <SID>YRWindowAction ('gp','v')<CR>
+    xnoremap <buffer> <silent> gp            :call <SID>YRWindowAction ('gp','v')<CR>
     nnoremap <buffer> <silent> gP            :call <SID>YRWindowActionN('gP','n')<CR>
-    vnoremap <buffer> <silent> gP            :call <SID>YRWindowAction ('gP','v')<CR>
+    xnoremap <buffer> <silent> gP            :call <SID>YRWindowAction ('gP','v')<CR>
     nnoremap <buffer> <silent> d             :call <SID>YRWindowActionN('d' ,'n')<CR>
-    vnoremap <buffer> <silent> d             :call <SID>YRWindowAction ('d' ,'v')<CR>
-    vnoremap <buffer> <silent> r             :call <SID>YRWindowAction ('r' ,'v')<CR>
+    xnoremap <buffer> <silent> d             :call <SID>YRWindowAction ('d' ,'v')<CR>
+    xnoremap <buffer> <silent> r             :call <SID>YRWindowAction ('r' ,'v')<CR>
     nnoremap <buffer> <silent> s             :call <SID>YRWindowAction ('s' ,'n')<CR>
     nnoremap <buffer> <silent> a             :call <SID>YRWindowAction ('a' ,'n')<CR>
     nnoremap <buffer> <silent> c             :call <SID>YRWindowAction ('c' ,'n')<CR>
@@ -1781,16 +1856,17 @@ function! s:YRWindowOpen(results)
                 \ )<CR>
 
     " Erase it's contents to the blackhole
-    %delete _
+    silent! exec '%delete _'
 
     " Display the status line / help 
     call s:YRWindowStatus(0)
+    exec 'normal! G'
 
     " Display the contents of the yankring
     silent! put =a:results
 
     " Erase last blank line
-    $delete _
+    silent! exec '$delete _'
 
     " Move the cursor to the first line with an element
     exec 0
@@ -2066,8 +2142,9 @@ augroup END
 
 " copy register
 inoremap <script> <SID>YRGetChar <c-r>=YRGetChar()<CR>
-nnoremap <silent> <SID>record :call YRRecord3()<cr>
-inoremap <silent> <SID>record <C-R>=YRRecord3()<cr>
+inoremap <script> <SID>YRGetSearch <c-r>=YRGetSearch()<CR>
+nnoremap <silent> <SID>yrrecord :call YRRecord3()<cr>
+inoremap <silent> <SID>yrrecord <C-R>=YRRecord3()<cr>
 
 
 " Public commands
