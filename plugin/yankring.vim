@@ -1,8 +1,8 @@
 " yankring.vim - Yank / Delete Ring for Vim
 " ---------------------------------------------------------------
-" Version:  7.0
+" Version:  8.0
 " Authors:  David Fishburn <dfishburn.vim@gmail.com>
-" Last Modified: 2008 Nov 14
+" Last Modified: 2008 Dec 21
 " Script:   http://www.vim.org/scripts/script.php?script_id=1234
 " Based On: Mocked up version by Yegappan Lakshmanan
 "           http://groups.yahoo.com/group/vim/post?act=reply&messageNum=34406
@@ -18,7 +18,7 @@ if v:version < 700
   finish
 endif
 
-let loaded_yankring = 70
+let loaded_yankring = 80
 
 let s:yr_has_voperator     = 0
 if v:version > 701 || ( v:version == 701 && has("patch205") )
@@ -212,18 +212,33 @@ if !exists('g:yankring_clipboard_monitor')
     let g:yankring_clipboard_monitor = 1
 endif
 
+if !exists('g:yankring_default_menu_mode')
+    let g:yankring_default_menu_mode = 3
+endif
+
 " Script variables for the yankring buffer
 let s:yr_buffer_name       = '__YankRing__'
 let s:yr_buffer_last_winnr = -1
 let s:yr_buffer_last       = -1
 let s:yr_buffer_id         = -1
-let s:yr_search            = ""
+let s:yr_search            = ''
+let s:yr_remove_omap_dot   = 0
+let s:yr_history_version   = 'v2'
+let s:yr_history_v1_nl     = '@@@'
+let s:yr_history_v1_nl_pat = '\%(\\\)\@<!@@@'
+let s:yr_history_v2_nl     = "\2" " Use double quotes for a special character
+let s:yr_history_v2_nl_pat = "\2"
 let s:yr_history_last_upd  = 0
-let s:yr_history_file      = 
+let s:yr_history_file_v1   = 
             \ g:yankring_history_dir.'/'.
             \ g:yankring_history_file.
             \ (g:yankring_share_between_instances==1?'':'_'.v:servername).
             \ '.txt'
+let s:yr_history_file_v2   = 
+            \ g:yankring_history_dir.'/'.
+            \ g:yankring_history_file.
+            \ (g:yankring_share_between_instances==1?'':'_'.v:servername).
+            \ '_v2.txt'
 
 
 " Vim window size is changed by the yankring plugin or not
@@ -265,8 +280,15 @@ function! s:YRDisplayElem(disp_nbr, script_var)
     endif
 
     let elem = matchstr(a:script_var, '^.*\ze,.*$')
-    let elem = substitute(elem, '\%(\\\)\@<!@@@', '\\n', 'g')
-    let elem = substitute(elem, '\\@', '@', 'g')
+    if s:yr_history_version == 'v1'
+        " v1
+        " let elem = substitute(elem, '\%(\\\)\@<!@@@', '\\n', 'g')
+        " v2
+        let elem = substitute(elem, s:yr_history_v1_nl_pat, '\\n', 'g')
+        let elem = substitute(elem, '\\@', '@', 'g')
+    else
+        let elem = substitute(elem, s:yr_history_v2_nl_pat, '\\n', 'g')
+    endif
     let length = strlen(elem)
     " Fancy trick to align them all regardless of how many
     " digits the element # is
@@ -365,25 +387,26 @@ endfunction
 " Used in omaps if a following string is required 
 " like with motions (/,?)
 function! s:YRGetSearch()
-    let msg = "YR:Enter string:"
-    echomsg msg
-    let str = ''
-    while 1==1
-        let c = getchar()
-        if c =~ '^\d\+$'
-            let c = nr2char(c)
-            if c == "\<C-C>"
-                return c
-            endif
-            if c == "\<CR>"
-                break
-            endif
-            let str = str.c
-            echomsg msg.str
-        else
-            break
-        endif
-    endwhile
+    " let msg = "YR:Enter string:"
+    " echomsg msg
+    let str = input("YR:Enter string:")
+    " let str = ''
+    " while 1==1
+    "     let c = getchar()
+    "     if c =~ '^\d\+$'
+    "         let c = nr2char(c)
+    "         if c == "\<C-C>"
+    "             return c
+    "         endif
+    "         if c == "\<CR>"
+    "             break
+    "         endif
+    "         let str = str.c
+    "         echomsg msg.str
+    "     else
+    "         break
+    "     endif
+    " endwhile
     return str
 endfunction
  
@@ -780,6 +803,10 @@ function! YRRecord3()
         " omap function completes
         let s:yr_prev_reg_unnamed = getreg('"')
         let s:yr_prev_reg_small   = getreg('-')
+    endif
+
+    if s:yr_remove_omap_dot == 1
+        call s:YRMapsCreate('add_only_zap_keys')
     endif
 
     " Add item to list
@@ -1290,15 +1317,26 @@ endfunction
 function! YRMapsExpression(sid, motion, ...)
     let cmds     = a:motion
 
+    if a:motion == "." && s:yr_remove_omap_dot == 1
+        " If we are repeating a series of commands we must
+        " unmap the _zap_ keys so that the user is not
+        " prompted when a command is replayed.
+        " These maps we be re-instated in YRRecord3()
+        " after the action of the replay is completed.
+        call s:YRMapsDelete('remove_only_zap_keys')
+    endif
+
     " Check if we are in operator-pending mode
     if cmds =~ '\('.substitute(g:yankring_zap_keys, ' ', '\\|', 'g').'\)'
         if cmds =~ '\(/\|?\)'
-            let zapto = a:0==0 ? "" : s:YRGetSearch()
-            if zapto != "\<C-C>"
+            let zapto = (a:0==0 ? "" : input("YR:Enter string:"))
+            if zapto != ""
                 let zapto = zapto . "\<CR>"
+            else
+                let zapto = "\<C-C>"
             endif
         else
-            let zapto = a:0==0 ? "" : s:YRGetChar()
+            let zapto = (a:0==0 ? "" : s:YRGetChar())
         endif
 
         if zapto == "\<C-C>"
@@ -1337,7 +1375,38 @@ endfunction
  
 
 " Create the default maps
-function! s:YRMapsCreate()
+function! s:YRMapsCreate(...)
+    " 7.1.patch205 introduces the v:operator function which was essential
+    " to gain the omap support.
+    if s:yr_has_voperator == 1
+        let s:yr_remove_omap_dot   = 1
+        for key in split(g:yankring_zap_keys)
+            try
+                exec 'omap <expr>' key 'YRMapsExpression("<SID>","'. key. '", 1)'
+            catch
+            endtry
+        endfor
+    endif
+
+    if a:0 > 0
+        " We have only removed the _zap_ keys temporarily
+        " so abandon further changes.
+        return
+    endif
+
+    " 7.1.patch205 introduces the v:operator function which was essential
+    " to gain the omap support.
+    if s:yr_has_voperator == 1
+        let s:yr_remove_omap_dot   = 1
+        " Set option to add and remove _zap_ keys when
+        " repeating commands
+        let o_maps = split(g:yankring_o_keys)
+        " Loop through and prompt the user for all buffer connection parameters.
+        for key in o_maps
+            exec 'omap <expr>' key 'YRMapsExpression("<SID>","'. escape(key,'\"'). '")'
+        endfor
+    endif
+
     " Iterate through a space separated list of mappings and create
     " calls to the YRYankCount function
     let n_maps = split(g:yankring_n_keys)
@@ -1349,23 +1418,9 @@ function! s:YRMapsCreate()
         exec 'nmap' key key."<SID>yrrecord"
     endfor
 
-    " 7.1.patch205 introduces the v:operator function which was essential
-    " to gain the omap support.
-    if s:yr_has_voperator == 1
-        let o_maps = split(g:yankring_o_keys)
-        " Loop through and prompt the user for all buffer connection parameters.
-        for key in o_maps
-            exec 'omap <expr>' key 'YRMapsExpression("<SID>","'. escape(key,'\"'). '")'
-        endfor
-
-        for key in split(g:yankring_zap_keys)
-            exec 'omap <expr>' key 'YRMapsExpression("<SID>","'. key. '", 1)'
-        endfor
-    endif
-
     if g:yankring_map_dot == 1
         if s:yr_has_voperator == 1
-            nmap <expr> . YRMapsExpression("<SID>",".")
+            nmap <expr> . YRMapsExpression("<SID>", ".")
         else
             nnoremap <silent> . :<C-U>YRYankCount '.'<CR>
         endif
@@ -1413,7 +1468,21 @@ endfunction
  
 
 " Create the default maps
-function! s:YRMapsDelete()
+function! s:YRMapsDelete(...)
+
+    let o_maps = split(g:yankring_zap_keys)
+    for key in o_maps
+        try
+            silent! exec 'ounmap' key
+        catch
+        endtry
+    endfor
+
+    if a:0 > 0
+        " We have only removed the _zap_ keys temporarily
+        " so abandon further changes.
+        return
+    endif
 
     " Iterate through a space separated list of mappings and create
     " calls to an appropriate YankRing function
@@ -1427,14 +1496,6 @@ function! s:YRMapsDelete()
     endfor
 
     let o_maps = split(g:yankring_o_keys)
-    for key in o_maps
-        try
-            silent! exec 'ounmap' key
-        catch
-        endtry
-    endfor
-
-    let o_maps = split(g:yankring_zap_keys)
     for key in o_maps
         try
             silent! exec 'ounmap' key
@@ -1490,9 +1551,8 @@ function! s:YRGetValElemNbr( position, type )
 
     let needed_elem = a:position
 
-    " The MRU stores the *order* of the items in the
-    " yankring, not the value.  These are stored within
-    " script variables.
+    " The List which contains the items in the yankring
+    " history is also ordered, most recent at the top
     let elem = s:YRMRUGet('s:yr_history_list', needed_elem)
 
     if elem >= 0
@@ -1500,10 +1560,15 @@ function! s:YRGetValElemNbr( position, type )
             return matchstr(elem, '^.*,\zs.*$')
         else
             let elem = matchstr(elem, '^.*\ze,.*$')
-            " Match three @@@ in a row as long as it is not
-            " preceeded by a \
-            let elem = substitute(elem, '\%(\\\)\@<!@@@', "\n", 'g')
-            let elem = substitute(elem, '\\@', '@', 'g')
+            if s:yr_history_version == 'v1'
+                " Match three @@@ in a row as long as it is not
+                " preceeded by a @@@            
+                " v1
+                let elem = substitute(elem, s:yr_history_v1_nl_pat, "\n", 'g')
+                let elem = substitute(elem, '\\@', '@', 'g')
+            else
+                let elem = substitute(elem, s:yr_history_v2_nl_pat, "\n", 'g')
+            endif
             return elem
         endif
     else
@@ -1547,8 +1612,12 @@ function! s:YRMRUAdd( mru_list, element, element_type )
     if g:yankring_max_element_length != 0
         let elem    = strpart(a:element, 0, g:yankring_max_element_length)
     endif
-    let elem    = escape(elem, '@')
-    let elem    = substitute(elem, "\n", '@@@', 'g')
+    if s:yr_history_version == 'v1'
+        let elem    = escape(elem, '@')
+        let elem    = substitute(elem, "\n", s:yr_history_v1_nl, 'g')
+    else
+        let elem    = substitute(elem, "\n", s:yr_history_v2_nl, 'g')
+    endif
     " Append the regtype to the end so we have it available
     let elem    = elem.",".a:element_type
 
@@ -1582,27 +1651,39 @@ function! s:YRMRUDel( mru_list, elem_nbr )
 endfunction
 
 function! s:YRHistoryRead()
-    let refresh_needed = 1
+    let refresh_needed  = 1
     let yr_history_list = []
+    let yr_filename     = s:yr_history_file_{s:yr_history_version}
 
-    if filereadable(s:yr_history_file)
-        let last_upd = getftime(s:yr_history_file)
+    if filereadable(yr_filename)
+        let last_upd = getftime(yr_filename)
 
         if s:yr_history_last_upd != 0 && last_upd <= s:yr_history_last_upd
             let refresh_needed = 0
         endif
 
         if refresh_needed == 1
-            let s:yr_history_list = readfile(s:yr_history_file)
+            let s:yr_history_list = readfile(yr_filename)
             let s:yr_history_last_upd = last_upd
             let s:yr_count = len(s:yr_history_list)
+            return
         else
-            return s:yr_history_list
+            return
         endif
     else
-        let s:yr_history_list = yr_history_list
-        call s:YRHistorySave()
+        if s:yr_history_version == 'v2'
+            " Check to see if an upgrade is required
+            " else, let the empty yr_history_list be returned.
+            if filereadable(s:yr_history_file_v1)
+                " Perform upgrade to v2 of the history file
+                call s:YRHistoryUpgrade('v1')
+                return
+            endif
+        endif
     endif
+
+    let s:yr_history_list = yr_history_list
+    call s:YRHistorySave()
 
 endfunction 
 
@@ -1612,16 +1693,40 @@ function! s:YRHistorySave()
         call remove(s:yr_history_list, g:yankring_max_history)
     endif
 
-    let rc = writefile(s:yr_history_list, s:yr_history_file)
+    let rc = writefile(s:yr_history_list, s:yr_history_file_{s:yr_history_version})
 
     if rc == 0
-        let s:yr_history_last_upd = getftime(s:yr_history_file)
+        let s:yr_history_last_upd = getftime(s:yr_history_file_{s:yr_history_version})
         let s:yr_count = len(s:yr_history_list)
     else
         call s:YRErrorMsg(
                     \ 'YRHistorySave: Unable to save yankring history file: '.
-                    \ s:yr_history_file
+                    \ s:yr_history_file_{s:yr_history_version}
                     \ )
+    endif
+endfunction 
+
+function! s:YRHistoryUpgrade(version)
+    if a:version == 'v1'
+        if filereadable(s:yr_history_file_v1)
+            let v1_list = readfile(s:yr_history_file_v1)
+            let v2_list = []
+            for elem in v1_list
+                " Restore from version 1
+                let elem = substitute(elem, s:yr_history_v1_nl_pat, "\n", 'g')
+                let elem = substitute(elem, '\\@', '@', 'g')
+                " Encode to version 2
+                let elem = substitute(elem, "\n", s:yr_history_v2_nl, 'g')
+                call add(v2_list, elem)
+            endfor
+            let s:yr_history_list = v2_list
+            call s:YRHistorySave()
+            call s:YRWarningMsg(
+                        \ "YR:History file:".
+                        \ s:yr_history_file_v1.
+                        \ ' has been upgraded.'
+                        \ )
+        endif
     endif
 endfunction 
 
@@ -1783,6 +1888,17 @@ function! s:YRWindowOpen(results)
     else
         " If the buffer is visible, switch to it
         exec bufwinnr(s:yr_buffer_name) . "wincmd w"
+    endif
+
+    " Perform a double check to ensure we have entered the correct
+    " buffer since we don't want to do the %d_ in the wrong buffer!
+    if bufnr('%') != s:yr_buffer_id
+        call s:YRWarningMsg(
+                    \ "YR:Failed to change to the yankring buffer, please contact author id:".
+                    \ s:yr_buffer_id.
+                    \ ' last:'.s:yr_buffer_last
+                    \ )
+        return -1
     endif
 
     " Mark the buffer as scratch
@@ -2127,6 +2243,18 @@ function! s:YRInsertLeave()
     " contents of any changed register after it completes.
     
     call YRRecord(s:YRRegister())
+
+    " When performing a change (not a yank or delete)
+    " it is not possible to call <SID>yrrecord at the end
+    " of the command (or it's contents will be inserted 
+    " into the buffer instead of executed).
+    " So, when using ".", we have to remove the _zap_
+    " keys and then re-add them back again after we 
+    " record the updates.
+    if s:yr_remove_omap_dot == 1
+        call s:YRMapsCreate('add_only_zap_keys')
+    endif
+
 endfunction
       
 " Deleting autocommands first is a good idea especially if we want to reload
@@ -2163,6 +2291,24 @@ command!                  -nargs=? YRShow         call s:YRShow(<args>)
 command!                  -nargs=? YRToggle       call s:YRToggle(<args>)
 command! -count -register -nargs=* YRYankCount    call s:YRYankCount(<args>)
 command! -range -bang     -nargs=? YRYankRange    <line1>,<line2>call s:YRYankRange(<bang>0, <args>)
+
+" Menus 
+if has("gui_running") && has("menu") && g:yankring_default_menu_mode != 0
+    if g:yankring_default_menu_mode == 1
+        let menuRoot = 'YankRing'
+    elseif g:yankring_default_menu_mode == 2
+        let menuRoot = '&YankRing'
+    else
+        let menuRoot = '&Plugin.&YankRing'
+    endif
+
+    exec 'noremenu  <script> '.menuRoot.'.YankRing\ Window  :YRShow<CR>'
+    exec 'noremenu  <script> '.menuRoot.'.YankRing\ Search  :YRSearch<CR>'
+    exec 'noremenu  <script> '.menuRoot.'.Replace\ with\ Previous  :YRReplace ''-1'', ''P''<CR>'
+    exec 'noremenu  <script> '.menuRoot.'.Replace\ with\ Next  :YRReplace ''1'', ''P''<CR>'
+    exec 'noremenu  <script> '.menuRoot.'.Clear  :YRClear<CR>'
+    exec 'noremenu  <script> '.menuRoot.'.Toggle :YRToggle<CR>'
+endif
 
 if g:yankring_enabled == 1
     " Create YankRing Maps

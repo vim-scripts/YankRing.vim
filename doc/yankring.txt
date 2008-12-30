@@ -1,7 +1,7 @@
 *yankring.txt*      For Vim version 7.0. 
 
-Author:	        David Fishburn                             November 14, 2008
-Version:        7.0
+Author:	        David Fishburn                             December 22, 2008
+Version:        8.0
 
 For instructions on installing this file, type
 	:help add-local-help |add-local-help| inside Vim.
@@ -1123,6 +1123,17 @@ mapping: >
 
 ==============================================================================
 7. History                                       *yankring-history*
+
+  8.0: December 21, 2008: 
+         NF: Changed the implementation of YRGetSearch() (David Liang).
+         BF: Under some unknown circumstances, the yankring can fail
+             to change to the correct buffer.  Put in code to double
+             check and abort.
+         BF: Yanking and pasting a line which ends in a backslash 
+             resulted in the backslash being replaced by "@@@".
+         BF: When repeating a command (".") which used any of the zap 
+             keys (f,F,t,T,/,?) you were prompted again for the 
+             string to match on (Vasilii Pascal).
 
   7.0: November 14, 2008: 
          NF: Added support for the / and ? motions so that y/search is 
