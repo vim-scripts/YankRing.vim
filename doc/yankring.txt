@@ -1,7 +1,7 @@
 *yankring.txt*      For Vim version 7.0. 
 
-Author:	        David Fishburn                             December 22, 2008
-Version:        8.0
+Author:	        David Fishburn                             August 29, 2009
+Version:        9.0
 
 For instructions on installing this file, type
 	:help add-local-help |add-local-help| inside Vim.
@@ -1123,6 +1123,21 @@ mapping: >
 
 ==============================================================================
 7. History                                       *yankring-history*
+
+  9.0: August 29, 2009: 
+         BF: You cannot execute a macro with ":normal @a".  It is still
+             not possible, but you can execute it with ":normal! @a"
+             (A S Budden).  
+         BF: When g:yankring_persist = 0 the YankRing could go into
+             an infinite loop (A S Budden).  
+         BF: When replaying a macro which used any of the zap
+             keys (f,F,t,T,/,?) you were prompted again for the 
+             string to match on (Ovidiu C).
+         BF: When checking the clipboard for changes 
+             (g:yankring_clipboard_monitor == 1) only add the item 
+             if it is not already in the ring.  Previously, the item
+             was moved to the top of the YankRing each time you flipped
+             focus.
 
   8.0: December 21, 2008: 
          NF: Changed the implementation of YRGetSearch() (David Liang).
