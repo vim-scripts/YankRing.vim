@@ -1,7 +1,7 @@
 *yankring.txt*      For Vim version 7.0. 
 
 Author:	        David Fishburn                             August 29, 2009
-Version:        9.0
+Version:        10.0
 
 For instructions on installing this file, type
 	:help add-local-help |add-local-help| inside Vim.
@@ -94,6 +94,13 @@ your |.vimrc|.
 <       Default: 100
         Controls how many elements to save in the yankring. >
             let g:yankring_max_history = 100
+    yankring_min_element_length 
+<       Default: 1
+        If the yanked element has a length less than this value 
+        if will not be added to the YankRing.  This can be useful if 
+        you want to bypass single letter deletes by adding the 
+        following to your .vimrc: >
+            let g:yankring_min_element_length = 2
     yankring_max_element_length 
 <       Default: 1048576 (1M)
         Will truncate a new entry to the specified maximum.  If 
@@ -1123,6 +1130,25 @@ mapping: >
 
 ==============================================================================
 7. History                                       *yankring-history*
+
+  10.0: January 31, 2010
+         NF: Change the buffer name to [YankRing] to resemble other
+             non-user buffers.
+         NF: Added g:yankring_min_element_length which can prevent 
+             items from being added to the YankRing if they are too small.
+             For example, single character deletes (Vedran M).
+         BF: When shifting focus back to Vim, the YankRing may incorrectly
+             report: "YR:Failed to change to the yankring buffer, 
+             please contact author".
+         BF: When entering Vim for the first time and hitting "p"
+             nothing was pasted (Mark Huiskes).
+         BF: When entering Vim for the first time and the
+             yankring_clipboard_monitor = 1, the clipboard entry 
+             was not automatically added to the yankring.
+         BF: When overriding the default and setting 
+             g:yankring_window_use_bottom = 0, the YankRing would
+             report the error (Sergey Khorev): 
+                 E21: Cannot make changes, 'modifiable' is off
 
   9.0: August 29, 2009: 
          BF: You cannot execute a macro with ":normal @a".  It is still
