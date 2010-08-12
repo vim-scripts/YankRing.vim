@@ -1,8 +1,8 @@
 " yankring.vim - Yank / Delete Ring for Vim
 " ---------------------------------------------------------------
-" Version:  10.0
+" Version:  11.0
 " Authors:  David Fishburn <dfishburn.vim@gmail.com>
-" Last Modified: 2010 Jan 24
+" Last Modified: 2010 Aug 09
 " Script:   http://www.vim.org/scripts/script.php?script_id=1234
 " Based On: Mocked up version by Yegappan Lakshmanan
 "           http://groups.yahoo.com/group/vim/post?act=reply&messageNum=34406
@@ -18,7 +18,7 @@ if v:version < 700
   finish
 endif
 
-let loaded_yankring = 100
+let loaded_yankring = 110
 
 let s:yr_has_voperator     = 0
 if v:version > 701 || ( v:version == 701 && has("patch205") )
@@ -50,6 +50,11 @@ endif
 " Specify the maximum length of 1 entry (1MB default)
 if !exists('g:yankring_max_element_length')
     let g:yankring_max_element_length = 1048576
+endif
+
+" Warn if truncation occurs
+if !exists('g:yankring_warn_on_truncate')
+    let g:yankring_warn_on_truncate = 1
 endif
 
 " Allow the user to specify if the plugin is enabled or not
@@ -632,7 +637,7 @@ endfunction
 
 " Resets the common script variables for managing the ring.
 function! s:YRReset()
-    let s:yr_history_list          = []
+    call s:YRHistoryDelete()
     " Update the history file
     call s:YRHistorySave()
 endfunction
@@ -1549,6 +1554,11 @@ function! s:YRMapsCreate(...)
 
     let g:yankring_enabled    = 1
     let s:yr_maps_created     = 1
+
+    if exists('*YRRunAfterMaps') 
+        " This will allow you to override the default maps if necessary
+        call YRRunAfterMaps()
+    endif
 endfunction
  
 
@@ -1638,38 +1648,31 @@ function! s:YRMapsDelete(...)
 endfunction
 
 function! s:YRGetValElemNbr( position, type )
-
     let needed_elem = a:position
 
     " The List which contains the items in the yankring
     " history is also ordered, most recent at the top
     let elem = s:YRMRUGet('s:yr_history_list', needed_elem)
 
-    if elem >= 0
-        if a:type == 't'
-            return matchstr(elem, '^.*,\zs.*$')
-        else
-            let elem = matchstr(elem, '^.*\ze,.*$')
-            if s:yr_history_version == 'v1'
-                " Match three @@@ in a row as long as it is not
-                " preceeded by a @@@            
-                " v1
-                let elem = substitute(elem, s:yr_history_v1_nl_pat, "\n", 'g')
-                let elem = substitute(elem, '\\@', '@', 'g')
-            else
-                let elem = substitute(elem, s:yr_history_v2_nl_pat, "\n", 'g')
-            endif
-            return elem
-        endif
+    if a:type == 't'
+        let elem = matchstr(elem, '^.*,\zs.*$')
     else
-        return -1
+        let elem = matchstr(elem, '^.*\ze,.*$')
+        if s:yr_history_version == 'v1'
+            " Match three @@@ in a row as long as it is not
+            " preceeded by a @@@            
+            " v1
+            let elem = substitute(elem, s:yr_history_v1_nl_pat, "\n", 'g')
+            let elem = substitute(elem, '\\@', '@', 'g')
+        else
+            let elem = substitute(elem, s:yr_history_v2_nl_pat, "\n", 'g')
+        endif
     endif
 
-    return ""
+    return elem
 endfunction
 
 function! s:YRMRUReset( mru_list )
-
     let {a:mru_list} = []
 
     return 1
@@ -1683,6 +1686,16 @@ function! s:YRMRUElemFormat( element, element_type )
     let elem    = a:element
     if g:yankring_max_element_length != 0
         let elem    = strpart(a:element, 0, g:yankring_max_element_length)
+        if (g:yankring_warn_on_truncate > 0)
+            let bytes = len (a:element) - len(elem)
+            if (bytes > 0)
+                call s:YRWarningMsg("Yankring truncated its element by ".
+                                        \ bytes.
+                                        \ " bytes due to a g:yankring_max_element_length of ".
+                                        \ g:yankring_max_element_length
+                                        \ )
+            endif
+        endif
     endif
     if s:yr_history_version == 'v1'
         let elem    = escape(elem, '@')
@@ -1754,7 +1767,6 @@ function! s:YRMRUAdd( mru_list, element, element_type )
 endfunction
 
 function! s:YRMRUDel( mru_list, elem_nbr )
-
     if a:elem_nbr >= 0 && a:elem_nbr < s:yr_count 
         call remove({a:mru_list}, a:elem_nbr)
         call s:YRHistorySave()
@@ -1762,6 +1774,23 @@ function! s:YRMRUDel( mru_list, elem_nbr )
 
     return 1
 endfunction
+
+function! s:YRHistoryDelete()
+    let s:yr_history_list = []
+    let yr_filename       = s:yr_history_file_{s:yr_history_version}
+
+    if filereadable(yr_filename)
+        let rc = delete(yr_filename)
+        if rc != 0
+            call s:YRErrorMsg(
+                        \ 'YRHistoryDelete: Unable to delete the yankring history file: '.
+                        \ yr_filename
+                        \ )
+        endif
+    endif
+
+    return 0
+endfunction 
 
 function! s:YRHistoryRead()
     let refresh_needed  = 1
@@ -1801,20 +1830,22 @@ function! s:YRHistoryRead()
 endfunction 
 
 function! s:YRHistorySave()
+    let yr_filename     = s:yr_history_file_{s:yr_history_version}
+
     if len(s:yr_history_list) > g:yankring_max_history
         " Remove items which exceed the max # specified
         call remove(s:yr_history_list, g:yankring_max_history)
     endif
 
-    let rc = writefile(s:yr_history_list, s:yr_history_file_{s:yr_history_version})
+    let rc = writefile(s:yr_history_list, yr_filename)
 
     if rc == 0
-        let s:yr_history_last_upd = getftime(s:yr_history_file_{s:yr_history_version})
+        let s:yr_history_last_upd = getftime(yr_filename)
         let s:yr_count = len(s:yr_history_list)
     else
         call s:YRErrorMsg(
                     \ 'YRHistorySave: Unable to save yankring history file: '.
-                    \ s:yr_history_file_{s:yr_history_version}
+                    \ yr_filename
                     \ )
     endif
 endfunction 
@@ -2431,28 +2462,35 @@ command! -range -bang     -nargs=? YRYankRange    <line1>,<line2>call s:YRYankRa
 if has("gui_running") && has("menu") && g:yankring_default_menu_mode != 0
     if g:yankring_default_menu_mode == 1
         let menuRoot = 'YankRing'
+        let menuPriority = ''
     elseif g:yankring_default_menu_mode == 2
         let menuRoot = '&YankRing'
+        let menuPriority = ''
+    elseif g:yankring_default_menu_mode == 3 
+        let menuRoot = exists("g:yankring_menu_root") ? g:yankring_menu_root : '&Plugin.&YankRing'
+        let menuPriority = exists("g:yankring_menu_priority") ? yankring_menu_priority : ''
     else
         let menuRoot = '&Plugin.&YankRing'
+        let menuPriority = ''
     endif
 
-    exec 'noremenu  <script> '.menuRoot.'.YankRing\ Window  :YRShow<CR>'
-    exec 'noremenu  <script> '.menuRoot.'.YankRing\ Search  :YRSearch<CR>'
-    exec 'noremenu  <script> '.menuRoot.'.Replace\ with\ Previous  :YRReplace ''-1'', ''P''<CR>'
-    exec 'noremenu  <script> '.menuRoot.'.Replace\ with\ Next  :YRReplace ''1'', ''P''<CR>'
-    exec 'noremenu  <script> '.menuRoot.'.Clear  :YRClear<CR>'
-    exec 'noremenu  <script> '.menuRoot.'.Toggle :YRToggle<CR>'
+    let leader = '\'
+    if exists('g:mapleader')
+        let leader = g:mapleader
+    endif
+    let leader = escape(leader, '\')
+
+    exec 'noremenu  <script> '.menuPriority.' '.menuRoot.'.YankRing\ Window  :YRShow<CR>'
+    exec 'noremenu  <script> '.menuPriority.' '.menuRoot.'.YankRing\ Search  :YRSearch<CR>'
+    exec 'noremenu  <script> '.menuPriority.' '.menuRoot.'.Replace\ with\ Previous<TAB>'.leader.'<C-P> :YRReplace ''-1'', ''P''<CR>'
+    exec 'noremenu  <script> '.menuPriority.' '.menuRoot.'.Replace\ with\ Next<TAB>'.leader.'<C-N> :YRReplace ''1'', ''P''<CR>'
+    exec 'noremenu  <script> '.menuPriority.' '.menuRoot.'.Clear  :YRClear<CR>'
+    exec 'noremenu  <script> '.menuPriority.' '.menuRoot.'.Toggle :YRToggle<CR>'
 endif
 
 if g:yankring_enabled == 1
     " Create YankRing Maps
     call s:YRMapsCreate()
-endif
-
-if exists('*YRRunAfterMaps') 
-    " This will allow you to override the default maps if necessary
-    call YRRunAfterMaps()
 endif
 
 call s:YRInit()
