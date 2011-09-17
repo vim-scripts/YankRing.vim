@@ -46,6 +46,8 @@ The GUI significantly simplifies your interaction with the yankring for basic fu
 
 Here is a small section from the tutorial (using maps) so you have some idea of how you interact with the plugin gaining access to previous yanks.  Using the GUI for basic operations is self explanatory.
 
+:h yankring-tutorial
+
 ---- Partial Tutorial ----
 To understand how to use the yankring, the following example should demonstrate the various features.
 

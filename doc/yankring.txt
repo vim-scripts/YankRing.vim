@@ -1,7 +1,7 @@
 *yankring.txt*      For Vim version 7.0. 
 
-Author:	        David Fishburn                             August 29, 2009
-Version:        11.0
+Author:	        David Fishburn                             September 16, 2011
+Version:        12.0
 
 For instructions on installing this file, type
 	:help add-local-help |add-local-help| inside Vim.
@@ -1169,6 +1169,14 @@ mapping: >
 
 ==============================================================================
 7. History                                       *yankring-history*
+
+  12.0: September 16, 2011
+         NF: Added support for the clipboard option "unnamedplus" which was
+             added after 7.3 (Hong Xu).
+         NF: When displaying the YankRing using YRShow, a new command "R"
+             has been added to display all of Vim's registers [0-9a-z].
+         BF: YRMapsDelete did not remove the normal mode @ map, which 
+             interfers with recorded macros (Philippe Vaucher ).
 
   11.0: August 09, 2010
          NF: Documented the global variables to customize the location
