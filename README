@@ -6,7 +6,7 @@ Vim does not provide any mechanism to reference previous yanked, deleted or chan
 
 The YankRing plugin allows the user to configure the number of yanked, deleted and changed text.  A split window can be used to choose which element(s) from the yankring you wish to paste.  Alternately after text has been pasted (using p), it can be replaced with a previous value from the yankring with a single key stroke.
 
-The captured text is stored in a file (location configurable) and is instantly available (also configurable) to any other instance of Vim also running on the same machine.
+The captured text is stored in a file (location configurable) and is instantly available (also configurable) to any other instance of Vim also running on the same machine.  This can especially be useful on *nix machines when you are sshed in running Vim in multiple terminals.
 
 Storing the capture text in a file allows the text to be shared easily between multiple instances of Vim running in X, Windows, SSH or Screen.
 
