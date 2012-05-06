@@ -1,7 +1,7 @@
 *yankring.txt*      For Vim version 7.0. 
 
-Author:	        David Fishburn                             February 5, 2011
-Version:        13.0
+Author:	        David Fishburn                             April 1, 2011
+Version:        14.0
 
 For instructions on installing this file, type
 	:help add-local-help |add-local-help| inside Vim.
@@ -21,23 +21,23 @@ Homepage: http://vim.sourceforge.net/script.php?script_id=1234
        3.4 Customizing Menus..................: |yankring-custom-menus|
     4. Using the YankRing Window..............: |yankring-window|
     5. Commands...............................: |yankring-commands|
-       5.1  YRToggle..........................: |YRToggle|
-       5.2  YRClear...........................: |YRClear|
-       5.3  YRShow............................: |YRShow|
-       5.5  YRGetElem.........................: |YRGetElem|
-       5.6  YRGetMultiple.....................: |YRGetMultiple|
-       5.7  YRPush............................: |YRPush|
-       5.8  YRPop.............................: |YRPop|
-       5.9  YRYankCount.......................: |YRYankCount|
-       5.10 YRYankRange.......................: |YRYankRange|
-       5.11 YRDeleteRange.....................: |YRDeleteRange|
-       5.12 YRPaste...........................: |YRPaste|
-       5.13 YRReplace.........................: |YRReplace|
-       5.14 YRMapsCreate......................: |YRMapsCreate|
-       5.15 YRMapsDelete......................: |YRMapsDelete|
-       5.16 YRSearch..........................: |YRSearch|
-       5.17 YRCheckClipboard..................: |YRCheckClipboard|
-       5.18 YRRunAfterMaps....................: |YRRunAfterMaps|
+       5.1  YRToggle..........................: |:YRToggle|
+       5.2  YRClear...........................: |:YRClear|
+       5.3  YRShow............................: |:YRShow|
+       5.5  YRGetElem.........................: |:YRGetElem|
+       5.6  YRGetMultiple.....................: |:YRGetMultiple|
+       5.7  YRPush............................: |:YRPush|
+       5.8  YRPop.............................: |:YRPop|
+       5.9  YRYankCount.......................: |:YRYankCount|
+       5.10 YRYankRange.......................: |:YRYankRange|
+       5.11 YRDeleteRange.....................: |:YRDeleteRange|
+       5.12 YRPaste...........................: |:YRPaste|
+       5.13 YRReplace.........................: |:YRReplace|
+       5.14 YRMapsCreate......................: |:YRMapsCreate|
+       5.15 YRMapsDelete......................: |:YRMapsDelete|
+       5.16 YRSearch..........................: |:YRSearch|
+       5.17 YRCheckClipboard..................: |:YRCheckClipboard|
+       5.18 YRRunAfterMaps....................: |:YRRunAfterMaps|
     6. Tutorial...............................: |yankring-tutorial|
        6.1  YRShow............................: |YRShow-example|
        6.2  YRReplace.........................: |YRReplace-example|
@@ -540,7 +540,7 @@ convience you can map a key, <F11>, to this command: >
 
 Status line~
 The first line in the YankRing window is the status line. >
-    AutoClose=1;ClipboardMonitor=1;Cmds:p,P,d,r,s,a,c,u,q,<enter>,<space>;Help=?
+    AutoClose=1;ClipboardMonitor=1;Cmds:[g]p,[g]P,1-9,d,r,s,a,c,u,q,<enter>,<space>;Help=?
 <
 Help=?, pressing [?] will toggle the display of available commands the
 yankring window supports.  Pressing [?] again will remove the additional
@@ -572,10 +572,11 @@ in the YankRing window.
   <CR>          Just like "p".
   <Enter>       Just like "p".
   <2-LeftMouse> Just like "p".  Normal mode only.
+  1-9           Short cut to paste the n'th number from the YankRing.
   d             Removes the element from the yankring.  In visual mode all
                 elements selected will be removed.
   r             Just like "p", but in visual mode if many lines are selected
-                it will paste these in reverse order.
+                it will paste these items in reverse order.
   s             Prompts you for a regex to search the YankRing and display
                 only matching items.
   a             Toggles the g:yankring_window_auto_close setting.
@@ -597,7 +598,7 @@ through maps against a buffer, instead of commands.  This makes it much easier
 to use.
 
 
-5.1  YRToggle                                    *YRToggle*
+5.1  YRToggle                                    :*YRToggle*
          Allows you to enable and disable the YankRing quickly.  This 
          command will remove the default maps and recreate them.
 
@@ -607,12 +608,12 @@ to use.
             :YRToggle 0  " Disables it
 <            
 
-5.2  YRClear                                     *YRClear*
+5.2  YRClear                                     :*YRClear*
          Clears all elements from the yankring.
          See also |YRClear-example|.
 
 
-5.3  YRShow                                      *YRShow*
+5.3  YRShow                                      :*YRShow*
          Similar to |:register|, will display all the entries in the yankring.
          The element at the top will be the next element pasted from the
          yankring.
@@ -629,7 +630,7 @@ to use.
             5     one^@
 <    
 
-5.5  YRGetElem                                   *YRGetElem*
+5.5  YRGetElem                                   :*YRGetElem*
         This command has two modes.  If no parameters are provided, it 
         becomes interactive.  It uses YRShow to display the list and 
         allows you to choose which element to paste.  If a parameter
@@ -649,7 +650,7 @@ to use.
             :YRGetElem 0   " Error, invalid choice is reported
  
 
-5.6  YRGetMultiple                               *YRGetMultiple*
+5.6  YRGetMultiple                               :*YRGetMultiple*
         Will paste many elements from the YankRing in one command.
         If the number specified is 1 or less, it is assumed you want
         just the current element pasted.  If the number specified is 
@@ -668,7 +669,7 @@ to use.
             :YRGetMultiple  0   " Will paste element  1
  
 
-5.7  YRPush                                      *YRPush*
+5.7  YRPush                                      :*YRPush*
          Allows the user to "push" additional entries into the yankring.
          If you yanked text via a key mapping which does not use the 
          YankRing (or there is text on the clipboard) you can use this
@@ -682,7 +683,7 @@ to use.
 <           See also |YRPush-example|.
              
 
-5.8  YRPop                                       *YRPop*
+5.8  YRPop                                       :*YRPop*
          Allows you to pop any elements from the yankring.  If no parameters
          are provided, the 1st element is removed from the yankring.  The
          command optionally takes a second parameter to specify how many
@@ -697,7 +698,7 @@ to use.
 <           See also |YRPop-example|.
              
 
-5.9  YRYankCount                                 *YRYankCount*
+5.9  YRYankCount                                 :*YRYankCount*
          This command has the most mappings created for it.  If you are 
          in normal mode and you are not specifying a range, this command
          will add the text to the yankring.
@@ -739,7 +740,7 @@ to use.
             See also |yankring-tutorial|.
          
          
-5.10 YRYankRange                                 *YRYankRange*
+5.10 YRYankRange                                 :*YRYankRange*
          This command by default is only called in visual mode.  All
          visual modes (|characterwise-visual|, |linewise-visual|,
          |blockwise-visual|) are supported.  Any visually selected text
@@ -761,12 +762,12 @@ to use.
 <           See also |YRYankRange-example|.
          
          
-5.11 YRDeleteRange                               *YRDeleteRange*
+5.11 YRDeleteRange                               :*YRDeleteRange*
          This command is identical to YRYankRange, except the range is
          also deleted.
 
 
-5.12 YRPaste                                     *YRPaste*
+5.12 YRPaste                                     :*YRPaste*
         This command will paste elements from the yankring.  By default it has
         been mapped to p and P to match Vim's native key strokes.  The text
         pasted is exactly what was yanked, including newline characters and 
@@ -783,7 +784,7 @@ to use.
             See also |yankring-tutorial|.
 
             
-5.13 YRReplace                                   *YRReplace*
+5.13 YRReplace                                   :*YRReplace*
         The purpose of the YankRing is to gain access to previously yanked
         (or deleted) elements.  This command will replace the previous
         paste with a different entry from the yankring.
@@ -812,18 +813,18 @@ to use.
                 let g:yankring_replace_n_nkey = '<Char-174>'
             endif
             
-5.14 YRMapsCreate                                *YRMapsCreate*
+5.14 YRMapsCreate                                :*YRMapsCreate*
         This public function is responsible for creating the maps which
         enable the yankring.  This function is called by the YRToggle 
         command.
 
             
-5.15 YRMapsDelete                                *YRMapsDelete*
+5.15 YRMapsDelete                                :*YRMapsDelete*
         This public function removes the YankRing maps and disables
         the yankring.  This function is called by the YRToggle command.
 
             
-5.16 YRSearch                                    *YRSearch*
+5.16 YRSearch                                    :*YRSearch*
         This command is similar to |YRGetElem|.  The command takes
         one parameter which is a regular expression.  Similar to 
         YRGetElem, it will display all items in the YankRing that match
@@ -831,14 +832,14 @@ to use.
         prompt you to enter which match you wish pasted.
         See also |YRSearch-example|.
 
-5.17 YRCheckClipboard                            *YRCheckClipboard*
+5.17 YRCheckClipboard                            :*YRCheckClipboard*
         Normally the GUI Vims will automatically (via autocmds) 
         check for changes to the system clipboard and add any new
         changes to the YankRing.  Most console Vim's do not fire
         the required autocmds.  This command will perform the check
         manually.
 
-5.18 YRRunAfterMaps                              *YRRunAfterMaps*
+5.18 YRRunAfterMaps                              :*YRRunAfterMaps*
         See the following section |yankring-custom-maps|.
 
 
@@ -1055,6 +1056,10 @@ mapping: >
     Using the YankRing window can be much faster if you do not want to cycle
     through the YankRing using <C-P> and <C-N> to find the element.   
 
+    As a short cut, when using the YankRing window, you can press the numbers 
+    1-9 to paste that item directly and close the YankRing window.  This can 
+    be faster than navigating to the correct line number and pressing 'p'.
+
                                                  *multiple-items-example*     
     There are times when you need to move through a buffer capturing many
     different lines (or snippets of code) and eventually want to switch 
@@ -1214,6 +1219,24 @@ mapping: >
 
 ==============================================================================
 7. History                                       *yankring-history*
+
+  14.0: April 1, 2012
+         NF: The YankRing window supports 1-9 to choose to paste those 
+             items for quicker access to the top 9 items.
+         NF: The YankRing now maps the @ key to run macros.  Not all actions
+             performed during the macro are recorded by the YankRing 
+             as a number of items had to be unmapped to support the replay
+             of actions which can prompt the user for input (i.e. t and f)
+             (Asis Hallab).
+         BF: When flipping between applications the system clipboard
+             was not added to the YankRing in all cases.
+         BF: The YankRing could report E121: Undefined variable:
+             g:yankring_manual_clipboard_check (Thilo Six).
+         BF: The YankRing could report: E132: Function call depth is higher 
+             than 'maxfuncdepth'.  When executing a YRClear or YRPop or 
+             when flipping between applications (Marcin Szamotulski).
+         BF: Strange behaviour when opening the YankRing with
+             :e [YankRing] instead of :YRShow (Marcin Szamotulski).
 
   13.0: February 5, 2012
          NF: [p, ]p, [P, ]P are now supported within the YankRing 
