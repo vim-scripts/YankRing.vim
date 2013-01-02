@@ -1,9 +1,9 @@
 " yankring.vim - Yank / Delete Ring for Vim
 " ---------------------------------------------------------------
-" Version:       14.0
+" Version:       15.0
 " Author:        David Fishburn <dfishburn dot vim at gmail dot com>
 " Maintainer:    David Fishburn <dfishburn dot vim at gmail dot com>
-" Last Modified: 2012 Mar 23
+" Last Modified: 2012 Dec 14
 " Script:        http://www.vim.org/scripts/script.php?script_id=1234
 " Based On:      Mocked up version by Yegappan Lakshmanan
 "                http://groups.yahoo.com/group/vim/post?act=reply&messageNum=34406
@@ -19,7 +19,7 @@ if v:version < 700
   finish
 endif
 
-let loaded_yankring = 140
+let loaded_yankring = 150
 
 " Turn on support for line continuations when creating the script
 let s:cpo_save = &cpo
@@ -211,8 +211,12 @@ if !exists('g:yankring_paste_v_akey')
     let g:yankring_paste_v_akey = 'p'
 endif
 
-if !exists('g:yankring_paste_check_default_buffer')
-    let g:yankring_paste_check_default_buffer = 1
+if exists('g:yankring_paste_check_default_buffer')
+    let g:yankring_paste_check_default_register = g:yankring_paste_check_default_buffer
+endif
+
+if !exists('g:yankring_paste_check_default_register')
+    let g:yankring_paste_check_default_register = 1
 endif
 
 if !exists('g:yankring_replace_n_pkey')
@@ -379,7 +383,8 @@ function! s:YRShow(...)
         if bufwinnr(s:yr_buffer_id) > -1
             " If the YankRing window is already open close it
             exec bufwinnr(s:yr_buffer_id) . "wincmd w"
-            hide
+            " Quit the YankRing
+            call s:YRWindowAction('q', 'n')
 
             " Switch back to the window which the YankRing
             " window was opened from
@@ -404,7 +409,7 @@ function! s:YRShow(...)
     " It is possible for registers to be changed outside of the
     " maps of the YankRing.  Perform this quick check when we
     " show the contents (or when it is refreshed).
-    if g:yankring_paste_check_default_buffer == 1
+    if g:yankring_paste_check_default_register == 1
         let save_reg = 0
         let register = ((&clipboard=~'\<unnamed\>')?'*':((&clipboard=~'\<unnamedplus\>' && has('unnamedplus'))?'+':'"'))
 
@@ -462,11 +467,13 @@ endfunction
 " like with motions (f,t)
 function! s:YRGetChar()
     let msg = "YR:Enter character:"
-    echomsg msg
+    " echomsg msg
+    echo msg
     let c = getchar()
     if c =~ '^\d\+$'
         let c = nr2char(c)
-        echomsg msg.c
+        " echomsg msg.c
+        echon c
     endif
     return c
 endfunction
@@ -663,14 +670,14 @@ function! s:YRSearch(...)
         let disp_item_nr   += 1
     endfor
 
-    if len(valid_choices) == 0
+    if empty(valid_choices)
         let output = output . "Search for [".s:yr_search."] did not match any items "
     endif
 
     if g:yankring_window_use_separate == 1
         call s:YRWindowOpen(output)
     else
-        if len(valid_choices) > 0
+        if !empty(valid_choices)
             echo output
             let elem = input("Enter # to paste:")
 
@@ -771,10 +778,17 @@ function! s:YRRegister()
     " so test for this condition and return the
     " default register
     let user_register = ((v:register=='')?('"'):(v:register))
-    if &clipboard =~ '\<unnamed\>' && user_register == '"'
+    let clipboard_default = matchstr( &clipboard, '\<unnamed\w*\>' )
+
+    " clipboard can have a comma separated list of values.
+    " Depending on which order the unnamed is referenced
+    " determines which register to use.
+    "    set clipboard=unnamedplus,unnamed
+    "    set clipboard=unnamed,unnamedplus
+    if clipboard_default == '\<unnamed\>' && user_register == '"'
         let user_register = '*'
     endif
-    if has('unnamedplus') && &clipboard =~ '\<unnamedplus\>' && user_register == '"'
+    if has('unnamedplus') && clipboard_default == '\<unnamedplus\>' && user_register == '"'
         let user_register = '+'
     endif
     return user_register
@@ -1068,7 +1082,7 @@ function! s:YRDoRepeat()
 
     if g:yankring_manage_numbered_reg == 1
         " When resetting the numbered register we are
-        " must ignore the comparision of the " register.
+        " must ignore the comparison of the " register.
         if s:yr_prev_reg_small  == getreg('-') &&
                     \ s:yr_prev_reg_insert == getreg('.') &&
                     \ s:yr_prev_reg_expres == histget('=', -1) &&
@@ -1286,8 +1300,20 @@ function! s:YRYankRange(do_delete_selection, ...) range
         let cmd_mode = ((a:1 == 'v') ? 'v' : 'n')
     endif
 
+    if a:do_delete_selection == 1
+        " Save register 0
+        " Register 0 should only be changed by yank operations 
+        " if we are deleting text, this could inadvertently 
+        " update this register.
+        let zero_register = [0, getreg(0), getregtype('0')]
+    endif
+
     if cmd_mode == 'v'
         " We are yanking either an entire line, or a range
+        " We want to yank the text first (even in a delete) since 
+        " the rules around which registers get updated are a bit 
+        " complicated.  For deletes, it depends on how large 
+        " the delete is for which registers get updated.
         exec "normal! gv".
                     \ (user_register==default_buffer?'':'"'.user_register).
                     \ 'y'
@@ -1305,6 +1331,11 @@ function! s:YRYankRange(do_delete_selection, ...) range
         else
             exec a:firstline . ',' . a:lastline . 'yank ' . user_register
         endif
+    endif
+
+    if a:do_delete_selection == 1
+        " Restore register zero
+        call call('setreg', zero_register)
     endif
 
     if user_register == '_'
@@ -1336,7 +1367,15 @@ function! s:YRPaste(replace_last_paste_selection, nextvalue, direction, ...)
     endif
 
     let user_register  = s:YRRegister()
-    let default_buffer = ((&clipboard=~'\<unnamed\>')?'*':((&clipboard=~'\<unnamedplus\>' && has('unnamedplus'))?'+':'"'))
+    let default_register = ((&clipboard=~'\<unnamed\>')?'*':((&clipboard=~'\<unnamedplus\>' && has('unnamedplus'))?'+':'"'))
+    let default_register = '"'
+    let clipboard_default = matchstr( &clipboard, '\<unnamed\w*\>' )
+    if has('unnamedplus') && clipboard_default == '\<unnamedplus\>' &&  (v:register == '' || v:register == '"')
+        let default_register = '+'
+    endif
+    if clipboard_default =~ '\<unnamed\>' && (v:register == '' || v:register == '"')
+        let default_register = '*'
+    endif
     let v_count        = v:count
 
     " Default command mode to normal mode 'n'
@@ -1349,7 +1388,7 @@ function! s:YRPaste(replace_last_paste_selection, nextvalue, direction, ...)
 
     " User has decided to bypass the yankring and specify a specific
     " register
-    if user_register != default_buffer
+    if user_register != default_register
         if a:replace_last_paste_selection == 1
             call s:YRWarningMsg( 'YR: A register cannot be specified in replace mode' )
             return
@@ -1361,7 +1400,7 @@ function! s:YRPaste(replace_last_paste_selection, nextvalue, direction, ...)
                 " allow the expression register to be pasted once
                 " and will revert back to the default buffer
                 let save_default_reg = @"
-                call setreg(default_buffer, eval(histget('=', -1)) )
+                call setreg(default_register, eval(histget('=', -1)) )
             else
                 let user_register = '"'.user_register
             endif
@@ -1391,60 +1430,60 @@ function! s:YRPaste(replace_last_paste_selection, nextvalue, direction, ...)
     "     let @" = 'test string'
     " would not be in the yankring as no mapping triggered this action.
     if a:replace_last_paste_selection != 1
-            " Only check the default buffer is the user wants us to.
-            " This was necessary prior to version 4.0 since we did not
-            " capture as many items as 4.0 and above does. (A. Budden)
-            if g:yankring_paste_check_default_buffer == 1
-                if ( default_buffer == '"' &&  getreg(default_buffer) != s:yr_prev_reg_unnamed )
-                    " There are only a couple of scenarios where this would happen
-                    " 1.  set clipboard = unnamed[plus]
-                    "     The user performs an action which changes the
-                    "     unnamed register (i.e. x - delete character)
-                    " 2.  Any type of direct manipulation of the registers
-                    "     let @" = 'something'
-                    " 3.  Something changed the system clipboard outside of Vim
-                    if getreg('"') != s:yr_prev_reg_unnamed
-                        let default_buffer = '"'
-                    endif
-
-                    " The user has performed a yank / delete operation
-                    " outside of the yankring maps.  First, add this
-                    " value to the yankring.
-                    call YRRecord(default_buffer)
-                elseif ( default_buffer == '+' &&
-                        \ len(getreg(default_buffer)) != 0 &&
-                        \ getreg(default_buffer) != s:yr_prev_clipboard_plus
-                        \ )
-
-                    " The user has performed a yank / delete operation
-                    " outside of the yankring maps.  First, add this
-                    " value to the yankring.
-                    call YRRecord(default_buffer)
-                elseif ( default_buffer == '*' &&
-                        \ len(getreg(default_buffer)) != 0 &&
-                        \ getreg(default_buffer) != s:yr_prev_clipboard_star
-                        \ )
-
-                    " The user has performed a yank / delete operation
-                    " outside of the yankring maps.  First, add this
-                    " value to the yankring.
-                    call YRRecord(default_buffer)
+        " Only check the default buffer is the user wants us to.
+        " This was necessary prior to version 4.0 since we did not
+        " capture as many items as 4.0 and above does. (A. Budden)
+        if g:yankring_paste_check_default_register == 1
+            if ( default_register == '"' &&  getreg(default_register) != s:yr_prev_reg_unnamed )
+                " There are only a couple of scenarios where this would happen
+                " 1.  set clipboard = unnamed[plus]
+                "     The user performs an action which changes the
+                "     unnamed register (i.e. x - delete character)
+                " 2.  Any type of direct manipulation of the registers
+                "     let @" = 'something'
+                " 3.  Something changed the system clipboard outside of Vim
+                if getreg('"') != s:yr_prev_reg_unnamed
+                    let default_register = '"'
                 endif
-            endif
 
-            exec "normal! ".
-                        \ ((cmd_mode=='n') ? "" : "gv").
-                        \ ((v_count > 0)?(v_count):'').
-                        \ a:direction
-                        "\ '"'.default_buffer.
-            let s:yr_paste_dir     = a:direction
-            let s:yr_prev_vis_mode = ((cmd_mode=='n') ? 0 : 1)
-            return
+                " The user has performed a yank / delete operation
+                " outside of the yankring maps.  First, add this
+                " value to the yankring.
+                call YRRecord(default_register)
+            elseif ( default_register == '+' &&
+                    \ !empty(getreg(default_register)) &&
+                    \ getreg(default_register) != s:yr_prev_clipboard_plus
+                    \ )
+
+                " The user has performed a yank / delete operation
+                " outside of the yankring maps.  First, add this
+                " value to the yankring.
+                call YRRecord(default_register)
+            elseif ( default_register == '*' &&
+                    \ !empty(getreg(default_register)) &&
+                    \ getreg(default_register) != s:yr_prev_clipboard_star
+                    \ )
+
+                " The user has performed a yank / delete operation
+                " outside of the yankring maps.  First, add this
+                " value to the yankring.
+                call YRRecord(default_register)
+            endif
+        endif
+
+        exec "normal! ".
+                    \ ((cmd_mode=='n') ? "" : "gv").
+                    \ ((v_count > 0)?(v_count):'').
+                    \ '"'.default_register.
+                    \ a:direction
+        let s:yr_paste_dir     = a:direction
+        let s:yr_prev_vis_mode = ((cmd_mode=='n') ? 0 : 1)
+        return
     endif
 
     " if s:yr_count > 0 || (
-    "             \ default_buffer != '"' &&
-    "             \ len(getreg(default_buffer)) == 0
+    "             \ default_register != '"' &&
+    "             \ empty(getreg(default_register))
     "             \ )
     "     " Nothing to paste
     "     return
@@ -1472,9 +1511,9 @@ function! s:YRPaste(replace_last_paste_selection, nextvalue, direction, ...)
 		    \ s:yr_last_paste_idx, which_elem
 		    \ )
 
-        let save_reg            = getreg(default_buffer)
-        let save_reg_type       = getregtype(default_buffer)
-        call setreg( default_buffer
+        let save_reg            = getreg(default_register)
+        let save_reg_type       = getregtype(default_register)
+        call setreg( default_register
                     \ , s:YRGetValElemNbr((s:yr_last_paste_idx-1),'v')
                     \ , s:YRGetValElemNbr((s:yr_last_paste_idx-1),'t')
                     \ )
@@ -1487,31 +1526,31 @@ function! s:YRPaste(replace_last_paste_selection, nextvalue, direction, ...)
         " there was nothing to undo, the paste never happened.
         exec "normal! ".
                     \ ((s:yr_prev_vis_mode==0) ? "" : "gv").
-                    \ '"'.default_buffer.
+                    \ '"'.default_register.
                     \ s:yr_paste_dir
-        call setreg(default_buffer, save_reg, save_reg_type)
+        call setreg(default_register, save_reg, save_reg_type)
         call s:YRSetPrevOP('', '', '', 'n')
     else
         " User hit p or P
         " Supports this for example -   5"ayy
         " And restores the current register
-        let save_reg            = getreg(default_buffer)
-        let save_reg_type       = getregtype(default_buffer)
+        let save_reg            = getreg(default_register)
+        let save_reg_type       = getregtype(default_register)
         let s:yr_last_paste_idx = 1
-        call setreg(default_buffer
+        call setreg(default_register
                     \ , s:YRGetValElemNbr(0,'v')
                     \ , s:YRGetValElemNbr(0,'t')
                     \ )
         exec "normal! ".
                     \ ((cmd_mode=='n') ? "" : "gv").
                     \ ((v_count > 0)?(v_count):'').
-                    \ '"'.default_buffer.
+                    \ '"'.default_register.
                     \ a:direction
-        call setreg(default_buffer, save_reg, save_reg_type)
+        call setreg(default_register, save_reg, save_reg_type)
         call s:YRSetPrevOP(
                     \ a:direction
                     \ , v_count
-                    \ , default_buffer
+                    \ , default_register
                     \ , 'n'
                     \ )
         let s:yr_paste_dir     = a:direction
@@ -1605,12 +1644,21 @@ function! s:YRMapsMacro(bang, ...)
     " after the action of the replay is completed.
     call s:YRMapsDelete('remove_only_zap_keys')
 
+    " Greg Sexton indicated the use of nr2char() removes 
+    " a "Press ENTER ..." prompt when executing a macro.
+    " let zapto = nr2char(getchar())
     " let zapto = (a:0==0 ? "" : s:YRGetChar())
     let zapto = s:YRGetChar()
 
     if zapto == "\<C-C>"
         " Abort if the user hits Control C
         call s:YRWarningMsg( "YR:Aborting macro" )
+        return ""
+    endif
+
+    if zapto !~ '\(\w\|@\)'
+        " Abort if the user does not specify a register
+        call s:YRWarningMsg( "YR:No register specified, aborting macro" )
         return ""
     endif
 
@@ -1698,7 +1746,7 @@ function! s:YRMapsCreate(...)
     endif
     if g:yankring_del_v_key != ''
         for v_map in split(g:yankring_del_v_key)
-            if strlen(v_map) > 0
+            if !empty(v_map)
                 try
                     exec 'xnoremap <silent>'.v_map." :YRDeleteRange 'v'<CR>"
                 catch
@@ -1790,7 +1838,7 @@ function! s:YRMapsDelete(...)
     endif
     if g:yankring_del_v_key != ''
         for v_map in split(g:yankring_del_v_key)
-            if strlen(v_map) > 0
+            if !empty(v_map)
                 try
                     silent! exec 'vunmap '.v_map
                 catch
@@ -1823,7 +1871,7 @@ function! s:YRMapsDelete(...)
         silent! exec 'nunmap '.g:yankring_replace_n_nkey
     endif
 
-    " silent! exec 'nunmap @'
+    silent! exec 'nunmap @'
 
     let g:yankring_enabled    = 0
     let s:yr_maps_created     = 0
@@ -1842,7 +1890,7 @@ function! s:YRGetValElemNbr( position, type )
         let elem = matchstr(elem, '^.*\ze,.*$')
         if s:yr_history_version == 'v1'
             " Match three @@@ in a row as long as it is not
-            " preceeded by a @@@
+            " preceded by a @@@
             " v1
             let elem = substitute(elem, s:yr_history_v1_nl_pat, "\n", 'g')
             let elem = substitute(elem, '\\@', '@', 'g')
@@ -2180,12 +2228,13 @@ function! s:YRWindowOpen(results)
             let win_size = g:yankring_window_height
         else
             " Open a horizontally split window. Increase the window size, if
-            " needed, to accomodate the new window
+            " needed, to accommodate the new window
             if g:yankring_window_width &&
                         \ &columns < (80 + g:yankring_window_width)
-                " one extra column is needed to include the vertical split
-                let &columns             = &columns + g:yankring_window_width + 1
-                let s:yr_winsize_chgd = 1
+                " Store the previous window size of the YankRing
+                let s:yr_winsize_chgd = &columns
+                " One extra column is needed to include the vertical split
+                let &columns          = &columns + g:yankring_window_width + 1
             else
                 let s:yr_winsize_chgd = 0
             endif
@@ -2250,6 +2299,9 @@ function! s:YRWindowOpen(results)
     setlocal noreadonly
     setlocal nospell
     setlocal modifiable
+    if v:version >= 703
+        setlocal norelativenumber
+    endif
 
     " set up syntax highlighting
     syn match yankringTitle #^--- YankRing ---$#hs=s+4,he=e-4
@@ -2431,10 +2483,12 @@ function! s:YRWindowAction(op, cmd_mode) range
 
     if opcode ==# 'q'
         " Close the yankring window
-        if s:yr_winsize_chgd == 1
+        if s:yr_winsize_chgd > 0
             " Adjust the Vim window width back to the width
             " it was before we showed the yankring window
-            let &columns= &columns - (g:yankring_window_width)
+            let &columns          = s:yr_winsize_chgd
+            " Reset the indicator the window size was changed
+            let s:yr_winsize_chgd = 0
         endif
 
         " Hide the YankRing window
@@ -2491,7 +2545,7 @@ function! s:YRWindowAction(op, cmd_mode) range
     " Switch back to the original buffer
     exec s:yr_buffer_last_winnr . "wincmd w"
 
-    " Intentional case insensitive comparision
+    " Intentional case insensitive comparison
     if opcode =~? 'p'
         let cmd   = 'YRGetElem '
         let parms = ", '".opcode."' "
@@ -2614,7 +2668,7 @@ function! s:YRCheckClipboard()
         " If the clipboard has changed record it inside the yankring
         " echomsg "YRCheckClipboard[".len(@*)."][".@*.']['.s:yr_prev_clipboard_star.']'
         if has('unnamedplus') && &clipboard =~ '\<unnamedplus\>'
-            if len(@+) > 0 && @+ != s:yr_prev_clipboard_plus
+            if !empty(@+) && @+ != s:yr_prev_clipboard_plus
                 let elem    = s:YRMRUElemFormat(
                             \   getreg('+')
                             \ , getregtype('+')
@@ -2629,7 +2683,7 @@ function! s:YRCheckClipboard()
                 let s:yr_prev_clipboard_plus = @+
             endif
         else
-            if len(@*) > 0 && @* != s:yr_prev_clipboard_star
+            if !empty(@*) && @* != s:yr_prev_clipboard_star
                 let elem    = s:YRMRUElemFormat(
                             \   getreg('*')
                             \ , getregtype('*')
