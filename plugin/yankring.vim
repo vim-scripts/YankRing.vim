@@ -1,9 +1,9 @@
 " yankring.vim - Yank / Delete Ring for Vim
 " ---------------------------------------------------------------
-" Version:       15.0
+" Version:       16.0
 " Author:        David Fishburn <dfishburn dot vim at gmail dot com>
 " Maintainer:    David Fishburn <dfishburn dot vim at gmail dot com>
-" Last Modified: 2012 Dec 14
+" Last Modified: 2013 Jan 20
 " Script:        http://www.vim.org/scripts/script.php?script_id=1234
 " Based On:      Mocked up version by Yegappan Lakshmanan
 "                http://groups.yahoo.com/group/vim/post?act=reply&messageNum=34406
@@ -19,7 +19,7 @@ if v:version < 700
   finish
 endif
 
-let loaded_yankring = 150
+let loaded_yankring = 160
 
 " Turn on support for line continuations when creating the script
 let s:cpo_save = &cpo
@@ -1386,37 +1386,83 @@ function! s:YRPaste(replace_last_paste_selection, nextvalue, direction, ...)
         let cmd_mode = ((a:1 == 'v') ? 'v' : 'n')
     endif
 
+    if a:replace_last_paste_selection == 1
+        " Replacing the previous put
+        let start = line("'[")
+        let end = line("']")
+
+        if start != line('.')
+            call s:YRWarningMsg( 'YR: You must paste text first, before you can replace' )
+            return
+        endif
+
+        if start == 0 || end == 0
+            return
+        endif
+
+        " If a count was provided (ie 5<C-P>), multiply the
+        " nextvalue accordingly and position the next paste index
+        " let which_elem = a:nextvalue * ((v_count > 0)?(v_count):1) * -1
+        let which_elem = matchstr(a:nextvalue, '-\?\d\+') * ((v_count > 0)?(v_count):1) * -1
+        let s:yr_last_paste_idx = s:YRGetNextElem(
+		    \ s:yr_last_paste_idx, which_elem
+		    \ )
+
+        let save_reg            = getreg(default_register)
+        let save_reg_type       = getregtype(default_register)
+        call setreg( default_register
+                    \ , s:YRGetValElemNbr((s:yr_last_paste_idx-1),'v')
+                    \ , s:YRGetValElemNbr((s:yr_last_paste_idx-1),'t')
+                    \ )
+
+        " First undo the previous paste
+        exec "normal! u"
+        " Check if the visual selection should be reselected
+        " Next paste the correct item from the ring
+        " This is done as separate statements since it appeared that if
+        " there was nothing to undo, the paste never happened.
+        exec "normal! ".
+                    \ ((s:yr_prev_vis_mode==0) ? "" : "gv").
+                    \ '"'.default_register.
+                    \ s:yr_paste_dir
+        call setreg(default_register, save_reg, save_reg_type)
+        call s:YRSetPrevOP('', '', '', 'n')
+
+        return
+    endif
+
     " User has decided to bypass the yankring and specify a specific
     " register
     if user_register != default_register
-        if a:replace_last_paste_selection == 1
-            call s:YRWarningMsg( 'YR: A register cannot be specified in replace mode' )
-            return
+        " if a:replace_last_paste_selection == 1
+        "     call s:YRWarningMsg( 'YR: A register cannot be specified in replace mode' )
+        "     return
+        " endif
+
+        " Check for the expression register, in this special case
+        " we must copy it's evaluation into the default buffer and paste
+        if user_register == '='
+            " Save the default register since Vim will only
+            " allow the expression register to be pasted once
+            " and will revert back to the default buffer
+            let save_default_reg = @"
+            call setreg(default_register, eval(histget('=', -1)) )
         else
-            " Check for the expression register, in this special case
-            " we must copy it's evaluation into the default buffer and paste
-            if user_register == '='
-                " Save the default register since Vim will only
-                " allow the expression register to be pasted once
-                " and will revert back to the default buffer
-                let save_default_reg = @"
-                call setreg(default_register, eval(histget('=', -1)) )
-            else
-                let user_register = '"'.user_register
-            endif
-            exec "normal! ".
-                        \ ((cmd_mode=='n') ? "" : "gv").
-                        \ ((v_count > 0)?(v_count):'').
-                        \ ((user_register=='=')?'':user_register).
-                        \ a:direction
-            if user_register == '='
-                let @" = save_default_reg
-            endif
-            " In this case, we have bypassed the yankring
-            " If the user hits next or previous we want the
-            " next item pasted to be the top of the yankring.
-            let s:yr_last_paste_idx = 1
+            let user_register = '"'.user_register
         endif
+        exec "normal! ".
+                    \ ((cmd_mode=='n') ? "" : "gv").
+                    \ ((v_count > 0)?(v_count):'').
+                    \ ((user_register=='=')?'':user_register).
+                    \ a:direction
+        if user_register == '='
+            let @" = save_default_reg
+        endif
+        " In this case, we have bypassed the yankring
+        " If the user hits next or previous we want the
+        " next item pasted to be the top of the yankring.
+        let s:yr_last_paste_idx = 1
+    
         let s:yr_paste_dir     = a:direction
         let s:yr_prev_vis_mode = ((cmd_mode=='n') ? 0 : 1)
         return
@@ -1489,73 +1535,31 @@ function! s:YRPaste(replace_last_paste_selection, nextvalue, direction, ...)
     "     return
     " endif
 
-    if a:replace_last_paste_selection == 1
-        " Replacing the previous put
-        let start = line("'[")
-        let end = line("']")
+    " User hit p or P
+    " Supports this for example -   5"ayy
+    " And restores the current register
+    let save_reg            = getreg(default_register)
+    let save_reg_type       = getregtype(default_register)
+    let s:yr_last_paste_idx = 1
+    call setreg(default_register
+                \ , s:YRGetValElemNbr(0,'v')
+                \ , s:YRGetValElemNbr(0,'t')
+                \ )
+    exec "normal! ".
+                \ ((cmd_mode=='n') ? "" : "gv").
+                \ ((v_count > 0)?(v_count):'').
+                \ '"'.default_register.
+                \ a:direction
+    call setreg(default_register, save_reg, save_reg_type)
+    call s:YRSetPrevOP(
+                \ a:direction
+                \ , v_count
+                \ , default_register
+                \ , 'n'
+                \ )
+    let s:yr_paste_dir     = a:direction
+    let s:yr_prev_vis_mode = ((cmd_mode=='n') ? 0 : 1)
 
-        if start != line('.')
-            call s:YRWarningMsg( 'YR: You must paste text first, before you can replace' )
-            return
-        endif
-
-        if start == 0 || end == 0
-            return
-        endif
-
-        " If a count was provided (ie 5<C-P>), multiply the
-        " nextvalue accordingly and position the next paste index
-        " let which_elem = a:nextvalue * ((v_count > 0)?(v_count):1) * -1
-        let which_elem = matchstr(a:nextvalue, '-\?\d\+') * ((v_count > 0)?(v_count):1) * -1
-        let s:yr_last_paste_idx = s:YRGetNextElem(
-		    \ s:yr_last_paste_idx, which_elem
-		    \ )
-
-        let save_reg            = getreg(default_register)
-        let save_reg_type       = getregtype(default_register)
-        call setreg( default_register
-                    \ , s:YRGetValElemNbr((s:yr_last_paste_idx-1),'v')
-                    \ , s:YRGetValElemNbr((s:yr_last_paste_idx-1),'t')
-                    \ )
-
-        " First undo the previous paste
-        exec "normal! u"
-        " Check if the visual selection should be reselected
-        " Next paste the correct item from the ring
-        " This is done as separate statements since it appeared that if
-        " there was nothing to undo, the paste never happened.
-        exec "normal! ".
-                    \ ((s:yr_prev_vis_mode==0) ? "" : "gv").
-                    \ '"'.default_register.
-                    \ s:yr_paste_dir
-        call setreg(default_register, save_reg, save_reg_type)
-        call s:YRSetPrevOP('', '', '', 'n')
-    else
-        " User hit p or P
-        " Supports this for example -   5"ayy
-        " And restores the current register
-        let save_reg            = getreg(default_register)
-        let save_reg_type       = getregtype(default_register)
-        let s:yr_last_paste_idx = 1
-        call setreg(default_register
-                    \ , s:YRGetValElemNbr(0,'v')
-                    \ , s:YRGetValElemNbr(0,'t')
-                    \ )
-        exec "normal! ".
-                    \ ((cmd_mode=='n') ? "" : "gv").
-                    \ ((v_count > 0)?(v_count):'').
-                    \ '"'.default_register.
-                    \ a:direction
-        call setreg(default_register, save_reg, save_reg_type)
-        call s:YRSetPrevOP(
-                    \ a:direction
-                    \ , v_count
-                    \ , default_register
-                    \ , 'n'
-                    \ )
-        let s:yr_paste_dir     = a:direction
-        let s:yr_prev_vis_mode = ((cmd_mode=='n') ? 0 : 1)
-    endif
 endfunction
 
 
@@ -1773,10 +1777,10 @@ function! s:YRMapsCreate(...)
         exec 'xnoremap <silent>'.g:yankring_paste_v_akey." :<C-U>YRPaste 'p', 'v'<CR>"
     endif
     if g:yankring_replace_n_pkey != ''
-        exec 'nnoremap <silent>'.g:yankring_replace_n_pkey." :<C-U>YRReplace '-1', 'P'<CR>"
+        exec 'nnoremap <silent>'.g:yankring_replace_n_pkey." :<C-U>YRReplace '-1', P<CR>"
     endif
     if g:yankring_replace_n_nkey != ''
-        exec 'nnoremap <silent>'.g:yankring_replace_n_nkey." :<C-U>YRReplace '1', 'p'<CR>"
+        exec 'nnoremap <silent>'.g:yankring_replace_n_nkey." :<C-U>YRReplace '1', p<CR>"
     endif
 
     let g:yankring_enabled    = 1

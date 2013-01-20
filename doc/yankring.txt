@@ -1,7 +1,7 @@
 *yankring.txt*      For Vim version 7.0. 
 
-Author:	        David Fishburn                             Jnauary 2, 2013
-Version:        15.0
+Author:	        David Fishburn                             Jnauary 20, 2013
+Version:        16.0
 
 For instructions on installing this file, type
 	:help add-local-help |add-local-help| inside Vim.
@@ -1220,9 +1220,13 @@ mapping: >
 ==============================================================================
 7. History                                       *yankring-history*
 
+  16.0: January 20, 2013
+         BF: YankRing could report "YR: A register cannot be specified in 
+             replace mode" when using clipboard = unnamed or unnamedplus.
+             This can often happen when fetching previous values from
+             the YankRing (i.e. <C-N> or <C-P>).
+
   15.0: January 2, 2013
-         NF: Automatically turn off relativenumber for the YankRing 
-             window (Emma Tramp).
          NF: Automatically turn off relativenumber for the YankRing 
              window (Emma Tramp).
          NF: The YankRing window supports 1-9 to choose to paste those 
