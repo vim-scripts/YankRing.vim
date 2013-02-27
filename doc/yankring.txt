@@ -365,7 +365,7 @@ variables in your |vimrc|.
         keys you wished mapped.  >
             let g:yankring_o_keys = 'b B w W e E d y $ G ; iw iW aw aW'
     yankring_zap_keys 
-<       Default: 'f F t T / ?'
+<       Default: 'f F t T / ? @'
         omaps are enough for most operations except for f and t.
         These motions prompt the user for a character or string which 
         they should act upon.  These must be treated as a special case 
@@ -1234,7 +1234,7 @@ mapping: >
          BF: When re-executing a macro using @<letter> and the macro 
              used f, F, t, T, a "Press ENTER to continue" prompt 
              was displayed (Greg Sexton).
-         BF: Some documentation updates and script tweaks (Dominique Pellé).
+         BF: Some documentation updates and script tweaks (Dominique Pellï¿½).
          BF: The 0 register was updated during delete operations 
              (Christian Brabandt).
          BF: When running a macro (@a), pressing @ displays a YankRing prompt
@@ -1335,7 +1335,7 @@ mapping: >
              (David Barsam).
          NF: Added a warning indicating a stored value has been truncated 
              based on g:yankring_max_element_length and a new option to
-             suppress this warning, g:yankring_warn_on_truncate (Hans-Günter).
+             suppress this warning, g:yankring_warn_on_truncate (Hans-Gï¿½nter).
          BF: The YRAfterMaps() function (if it exists) was not re-run if 
              YRToggle was used to disable and enable the YankRing.
          BF: Multibyte strings may not have been pasted correctly (Dr. Chip).
