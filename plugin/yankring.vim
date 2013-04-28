@@ -1,9 +1,9 @@
 " yankring.vim - Yank / Delete Ring for Vim
 " ---------------------------------------------------------------
-" Version:       16.0
+" Version:       17.0
 " Author:        David Fishburn <dfishburn dot vim at gmail dot com>
 " Maintainer:    David Fishburn <dfishburn dot vim at gmail dot com>
-" Last Modified: 2013 Jan 20
+" Last Modified: 2013 Apr 28
 " Script:        http://www.vim.org/scripts/script.php?script_id=1234
 " Based On:      Mocked up version by Yegappan Lakshmanan
 "                http://groups.yahoo.com/group/vim/post?act=reply&messageNum=34406
@@ -19,7 +19,7 @@ if v:version < 700
   finish
 endif
 
-let loaded_yankring = 160
+let loaded_yankring = 170
 
 " Turn on support for line continuations when creating the script
 let s:cpo_save = &cpo
@@ -33,7 +33,13 @@ endif
 if !exists('g:yankring_history_dir')
     let g:yankring_history_dir = expand('$HOME')
 else
-    let g:yankring_history_dir = expand(g:yankring_history_dir)
+    " let g:yankring_history_dir = expand(g:yankring_history_dir)
+    for dir in split(g:yankring_history_dir, ",")
+        if isdirectory(expand(dir))
+            let g:yankring_history_dir = expand(dir)
+            break
+        endif
+    endfor   
 endif
 
 if !exists('g:yankring_history_file')
@@ -136,6 +142,11 @@ endif
 " top of the yankring.
 if !exists('g:yankring_ignore_duplicate')
     let g:yankring_ignore_duplicate = 1
+endif
+
+" Determine whether to record inserted data
+if !exists('g:yankring_record_insert')
+    let g:yankring_record_insert = 0
 endif
 
 " Vim automatically manages the numbered registers:
@@ -264,16 +275,18 @@ let s:yr_history_v1_nl_pat = '\%(\\\)\@<!@@@'
 let s:yr_history_v2_nl     = "\2" " Use double quotes for a special character
 let s:yr_history_v2_nl_pat = "\2"
 let s:yr_history_last_upd  = 0
-let s:yr_history_file_v1   =
-            \ g:yankring_history_dir.'/'.
-            \ g:yankring_history_file.
-            \ (g:yankring_share_between_instances==1?'':'_'.v:servername).
-            \ '.txt'
-let s:yr_history_file_v2   =
-            \ g:yankring_history_dir.'/'.
-            \ g:yankring_history_file.
-            \ (g:yankring_share_between_instances==1?'':'_'.v:servername).
-            \ '_v2.txt'
+if g:yankring_persist == 1
+    let s:yr_history_file_v1   =
+                \ g:yankring_history_dir.'/'.
+                \ g:yankring_history_file.
+                \ (g:yankring_share_between_instances==1?'':'_'.v:servername).
+                \ '.txt'
+    let s:yr_history_file_v2   =
+                \ g:yankring_history_dir.'/'.
+                \ g:yankring_history_file.
+                \ (g:yankring_share_between_instances==1?'':'_'.v:servername).
+                \ '_v2.txt'
+endif
 
 
 " Vim window size is changed by the yankring plugin or not
@@ -752,7 +765,7 @@ function! s:YRInit(...)
     " reset prior to issuing the YRReplace
     let s:yr_prev_vis_mode         = 0
 
-    if a:0 == 0 && g:yankring_persist == 0
+    if a:0 == 0 && g:yankring_persist != 1
         " The user wants the yankring reset each time Vim is started
         call s:YRClear()
     endif
@@ -1994,6 +2007,7 @@ function! s:YRMRUAdd( mru_list, element, element_type )
             call remove({a:mru_list}, found)
         endif
         call insert({a:mru_list}, elem, 0)
+        let s:yr_count = len({a:mru_list})
         call s:YRHistorySave()
     endif
 
@@ -2003,6 +2017,7 @@ endfunction
 function! s:YRMRUDel( mru_list, elem_nbr )
     if a:elem_nbr >= 0 && a:elem_nbr < s:yr_count
         call remove({a:mru_list}, a:elem_nbr)
+        let s:yr_count = len({a:mru_list})
         call s:YRHistorySave()
     endif
 
@@ -2011,6 +2026,11 @@ endfunction
 
 function! s:YRHistoryDelete()
     let s:yr_history_list = []
+    let s:yr_count        = 0
+
+    if g:yankring_persist != 1
+        return 
+    endif
     let yr_filename       = s:yr_history_file_{s:yr_history_version}
 
     if filereadable(yr_filename)
@@ -2027,6 +2047,9 @@ function! s:YRHistoryDelete()
 endfunction
 
 function! s:YRHistoryRead()
+    if g:yankring_persist != 1
+        return
+    endif
     let refresh_needed  = 1
     let yr_history_list = []
     let yr_filename     = s:yr_history_file_{s:yr_history_version}
@@ -2060,22 +2083,25 @@ function! s:YRHistoryRead()
 
     let s:yr_history_list = yr_history_list
     call s:YRHistorySave()
-
 endfunction
 
 function! s:YRHistorySave()
-    let yr_filename     = s:yr_history_file_{s:yr_history_version}
 
     if len(s:yr_history_list) > g:yankring_max_history
         " Remove items which exceed the max # specified
-        call remove(s:yr_history_list, g:yankring_max_history)
+        call remove(s:yr_history_list, g:yankring_max_history, (len(s:yr_history_list)-1))
+        let s:yr_count = len(s:yr_history_list)
     endif
 
+    if g:yankring_persist != 1
+        return 
+    endif
+
+    let yr_filename     = s:yr_history_file_{s:yr_history_version}
     let rc = writefile(s:yr_history_list, yr_filename)
 
     if rc == 0
         let s:yr_history_last_upd = getftime(yr_filename)
-        let s:yr_count = len(s:yr_history_list)
     else
         call s:YRErrorMsg(
                     \ 'YRHistorySave: Unable to save yankring history file: '.
@@ -2144,7 +2170,8 @@ function! s:YRWindowStatus(show_help)
 
     let msg = 'AutoClose='.g:yankring_window_auto_close.
                 \ ';ClipboardMonitor='.g:yankring_clipboard_monitor.
-                \ ';Cmds:<enter>,[g]p,[g]P,1-9,d,r,s,a,c,u,R,q,<space>;Help=?'.
+                \ ';Inserts='.g:yankring_record_insert.
+                \ ';Cmds:<enter>,[g]p,[g]P,1-9,d,r,s,a,c,i,u,R,q,<space>;Help=?'.
                 \ (s:yr_search==""?"":';SearchRegEx='.s:yr_search)
 
     if s:yr_has_voperator == 0
@@ -2167,6 +2194,7 @@ function! s:YRWindowStatus(show_help)
                     \ '" R            : [R]egisters display'."\n".
                     \ '" a            : toggle [a]utoclose setting'."\n".
                     \ '" c            : toggle [c]lipboard monitor setting'."\n".
+                    \ '" i            : toggle [i]nsert recording'."\n".
                     \ '" q            : [q]uit / close the yankring window'."\n".
                     \ '" ?            : Remove help text'."\n".
                     \ '" <space>      : toggles the width of the window'."\n".
@@ -2365,6 +2393,7 @@ function! s:YRWindowOpen(results)
     nnoremap <buffer> <silent> s             :call <SID>YRWindowAction ('s'   , 'n')<CR>
     nnoremap <buffer> <silent> a             :call <SID>YRWindowAction ('a'   , 'n')<CR>
     nnoremap <buffer> <silent> c             :call <SID>YRWindowAction ('c'   , 'n')<CR>
+    nnoremap <buffer> <silent> i             :call <SID>YRWindowAction ('i'   , 'n')<CR>
     nnoremap <buffer> <silent> ?             :call <SID>YRWindowAction ('?'   , 'n')<CR>
     nnoremap <buffer> <silent> u             :call <SID>YRWindowAction ('u'   , 'n')<CR>
     nnoremap <buffer> <silent> q             :call <SID>YRWindowAction ('q'   , 'n')<CR>
@@ -2536,6 +2565,15 @@ function! s:YRWindowAction(op, cmd_mode) range
         " Toggle the clipboard monitor setting
         let g:yankring_clipboard_monitor =
                     \ (g:yankring_clipboard_monitor == 1?0:1)
+        " Display the status line / help
+        call s:YRWindowStatus(0)
+        call cursor(l:curr_line,0)
+        return
+    elseif opcode ==# 'i'
+        let l:curr_line = line(".")
+        " Toggle the auto close setting
+        let g:yankring_record_insert =
+                    \ (g:yankring_record_insert == 1?0:1)
         " Display the status line / help
         call s:YRWindowStatus(0)
         call cursor(l:curr_line,0)
@@ -2732,6 +2770,24 @@ function! s:YRInsertLeave()
         call s:YRMapsCreate('add_only_zap_keys')
     endif
 
+    " Check if we should record inserted text
+    if g:yankring_record_insert == 1
+        if !empty(@.) && @. != s:yr_prev_reg_insert
+            let elem    = s:YRMRUElemFormat(
+                        \   getreg('.')
+                        \ , getregtype('.')
+                        \ )
+            let found   = s:YRMRUHas('s:yr_history_list', elem)
+
+            " Only add the item to the "top" of the ring if it is
+            " not in the ring already.
+            if found == -1
+                call YRRecord3(".")
+            endif
+            let s:yr_prev_reg_insert = @.
+        endif
+    endif
+
 endfunction
 
 " Deleting autocommands first is a good idea especially if we want to reload
@@ -2804,7 +2860,7 @@ if has("menu") && g:yankring_default_menu_mode != 0
     exec 'noremenu  <script> '.menuPriority.' '.menuRoot.'.YankRing\ Window  :YRShow<CR>'
     exec 'noremenu  <script> '.menuPriority.' '.menuRoot.'.YankRing\ Search  :YRSearch<CR>'
     exec 'noremenu  <script> '.menuPriority.' '.menuRoot.'.Replace\ with\ Previous<TAB>'.leader.g:yankring_replace_n_pkey.' :YRReplace -1, ''P''<CR>'
-    exec 'noremenu  <script> '.menuPriority.' '.menuRoot.'.Replace\ with\ Next<TAB>'.leader.g:yankring_replace_n_pkey.' :YRReplace 1, ''P''<CR>'
+    exec 'noremenu  <script> '.menuPriority.' '.menuRoot.'.Replace\ with\ Next<TAB>'.leader.g:yankring_replace_n_nkey.' :YRReplace 1, ''P''<CR>'
     exec 'noremenu  <script> '.menuPriority.' '.menuRoot.'.Clear  :YRClear<CR>'
     exec 'noremenu  <script> '.menuPriority.' '.menuRoot.'.Toggle :YRToggle<CR>'
     exec 'noremenu  <script> '.menuPriority.' '.menuRoot.'.Check\ Clipboard :YRCheckClipboard<CR>'
