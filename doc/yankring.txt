@@ -1,7 +1,7 @@
 *yankring.txt*      For Vim version 7.0. 
 
 Author:	        David Fishburn                             Jnauary 20, 2013
-Version:        16.0
+Version:        17.0
 
 For instructions on installing this file, type
 	:help add-local-help |add-local-help| inside Vim.
@@ -183,12 +183,20 @@ your |.vimrc|.
         action is performed and the buffer window is closed, returning you to
         the original buffer.  This option can be toggled from within the
         YankRing buffer by pressing [a].  The YankRing buffer status line
-        visually indicates where auto close is enabled or disabled.  There are
+        visually indicates when auto close is enabled or disabled.  There are
         many times where you need to paste (or delete) many items from the
         yankring.  Pressing [a], disables auto close, allows you to paste many
         items, and finally you can press [a] to re-enable auto close, followed
         by [q] to quit the buffer window. >
             let g:yankring_window_auto_close = 1
+    yankring_record_insert
+<       Default: 0
+        If you want text you insert to be recorded in the YankRing you can
+        enable this feature two ways.  From within the YankRing window you can
+        press [i].  The YankRing buffer status line visually indicates when
+        recording inserts is enabled or disabled.  To enable this option 
+        at Vim startup, put the following in your .vimrc: >
+            let g:yankring_record_insert = 1
     yankring_window_use_horiz
 <       Default: 1
         When the YankRing window is opened, it uses a horizontal split at the
@@ -246,6 +254,9 @@ your |.vimrc|.
 <       Default: $HOME
         The YankRing stores the text in a file.  This global variable
         allows you to customize where the file(s) will be stored.
+        This can be a comma separated list, which is useful if your 
+        .vimrc is shared across different machines.  If multipe directories
+        are specified, the first valid directory will be used.
         You can put the following in your |vimrc| >
             let g:yankring_history_dir = '$VIM'
     yankring_history_file
@@ -306,7 +317,7 @@ your |.vimrc|.
               "3": Turns the 'Plugin -> YankRing' menu on with <alt>-y as 
                    the shortcut.
           This option defaults to a value of 3 and can be changed
-          by adding the following to your vimrc: >
+          by adding the following to your .vimrc: >
             :let  g:yankring_default_menu_mode = 3
     yankring_menu_root
 <       - Can be used in conjuction with g:yankring_default_menu_mode = 3 but 
@@ -518,7 +529,7 @@ YRYankCount tells Vim to execute y$ instead.
 
 3.4 Customizing Menus                            *yankring-custom-menus*
 
-There are several global variables which can be created in your vimrc to
+There are several global variables which can be created in your .vimrc to
 allow you to customize where and what is displayed for the YankRing menu. 
 Simply look up the following global variables: >
     yankring_default_menu_mode
@@ -1220,6 +1231,18 @@ mapping: >
 ==============================================================================
 7. History                                       *yankring-history*
 
+  17.0: April 28, 2013
+         NF: The yankring_history_dir option can now take a comma separated
+             list.  First valid directory found will be used (Alex Bel).
+         NF: YankRing can now monitor inserted text and place it in the ring.
+             This is disabled by default, but can be enabled either through 
+             the YankRing window or via your .vimrc using the new option:
+             g:yankring_record_insert = 1 (Alexandre Viau).
+         BF: When g:yankring_persist = 0, the YankRing was still reading 
+             and writing to the yankring file (Vladimir Marek).
+         BF: The YankRing menu entry, "Replace with Next", was performing
+             the "Replace with Previous" action (Thilo Six).
+
   16.0: January 20, 2013
          BF: YankRing could report "YR: A register cannot be specified in 
              replace mode" when using clipboard = unnamed or unnamedplus.
@@ -1444,7 +1467,7 @@ mapping: >
          NF: The global variables which allow you to customize the behaviour
              are now space separated instead of comma separated.  This
              provides greater flexibility but will require you to modify
-             your vimrc (if you have customized it). (Andy Wokula)
+             your .vimrc (if you have customized it). (Andy Wokula)
          BF: If using <C-O> from within insert mode, the YankRing inserted
              characters into the buffer instead of capturing the changes,
              this was fixed by Andy Wokula (Agathoklis Hatzimanikas).
@@ -1483,11 +1506,11 @@ mapping: >
          NF: The YankRing window always opened bottom horizontal.  Now it
              can be opened top or bottom and horizontal or vertically.
              This can be controlled via variables in your .vimrc.
-         BF: The YankRing has an option to persist between instances
-             of Vim by storing the values in global variables within
-             the viminfo.  This has led to some unusual ordering of
-             items in the ring from conflicts between instances.
-             This option has been turned off by default.
+         BF: The YankRing has an option to persist between instances of Vim by 
+             storing the values in global variables within the viminfo.  This
+             has led to some unusual ordering of items in the ring from
+             conflicts between instances.  This option has been turned off by
+             default.
          BF: Their was an issue with yanking using y$.
 
   3.1: September 10, 2007: 
@@ -1532,7 +1555,7 @@ mapping: >
              are a number of maps that allow you to interact with the
              contents.  The window can be positioned vertically or
              horizontally as well as being sized all through options 
-             specified in your vimrc.
+             specified in your .vimrc.
 	     NF: YRPop can now delete any items from the yankring, rather 
 		     that just from the top.
 	     NF: YRSetTop has been removed, it is no longer required as the
