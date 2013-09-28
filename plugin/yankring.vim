@@ -1,9 +1,9 @@
 " yankring.vim - Yank / Delete Ring for Vim
 " ---------------------------------------------------------------
-" Version:       17.0
+" Version:       18.0
 " Author:        David Fishburn <dfishburn dot vim at gmail dot com>
 " Maintainer:    David Fishburn <dfishburn dot vim at gmail dot com>
-" Last Modified: 2013 Apr 28
+" Last Modified: 2013 Sep 19
 " Script:        http://www.vim.org/scripts/script.php?script_id=1234
 " Based On:      Mocked up version by Yegappan Lakshmanan
 "                http://groups.yahoo.com/group/vim/post?act=reply&messageNum=34406
@@ -19,7 +19,7 @@ if v:version < 700
   finish
 endif
 
-let loaded_yankring = 170
+let loaded_yankring = 180
 
 " Turn on support for line continuations when creating the script
 let s:cpo_save = &cpo
@@ -40,6 +40,10 @@ else
             break
         endif
     endfor   
+endif
+
+if !exists('g:yankring_buffer_name')
+    let g:yankring_buffer_name = '[YankRing]'
 endif
 
 if !exists('g:yankring_history_file')
@@ -263,7 +267,6 @@ if !exists('g:yankring_default_menu_mode')
 endif
 
 " Script variables for the yankring buffer
-let s:yr_buffer_name       = '[YankRing]'
 let s:yr_buffer_last_winnr = -1
 let s:yr_buffer_last       = -1
 let s:yr_buffer_id         = -1
@@ -538,7 +541,7 @@ function! s:YRGetElem(...)
     if a:0 > 1
         " If the user indicated to paste above or below
         " let direction = ((a:2 ==# 'P') ? 'P' : 'p')
-        if a:2 =~ '\(p\|gp\|P\|gP\)'
+        if a:2 =~ '\<\(p\|gp\|P\|gP\)\>'
             let direction = a:2
         endif
     endif
@@ -1651,8 +1654,6 @@ endfunction
 
 
 " Handle macros (@).
-" This routine is not used, YRMapsExpression is used to
-" handle the @ symbol.
 function! s:YRMapsMacro(bang, ...)
     " If we are repeating a series of commands we must
     " unmap the _zap_ keys so that the user is not
@@ -1673,7 +1674,7 @@ function! s:YRMapsMacro(bang, ...)
         return ""
     endif
 
-    if zapto !~ '\(\w\|@\)'
+    if zapto !~ '\(\w\|@\|:\)'
         " Abort if the user does not specify a register
         call s:YRWarningMsg( "YR:No register specified, aborting macro" )
         return ""
@@ -2302,7 +2303,7 @@ function! s:YRWindowOpen(results)
 
         " Using :e and hide prevents the alternate buffer
         " from being changed.
-        exec ":e " . escape(s:yr_buffer_name, ' ')
+        exec ":e " . escape(g:yankring_buffer_name, ' ')
         " Save buffer id
         let s:yr_buffer_id = bufnr('%') + 0
     else
@@ -2342,13 +2343,15 @@ function! s:YRWindowOpen(results)
 
     syn match yankringKey #^AutoClose.*<enter>#hs=e-6
     syn match yankringKey #^AutoClose.*\[g\]p#hs=e-3 contains=yankringKey
-    syn match yankringKey #^AutoClose.*\[p\]P#hs=e-3 contains=yankringKey
+    syn match yankringKey #^AutoClose.*\[g\]P#hs=e-3 contains=yankringKey
     syn match yankringKey #^AutoClose.*,d,#hs=e-1,he=e-1 contains=yankringKey
     syn match yankringKey #^AutoClose.*,r,#hs=e-1,he=e-1 contains=yankringKey
     syn match yankringKey #^AutoClose.*,s,#hs=e-1,he=e-1 contains=yankringKey
     syn match yankringKey #^AutoClose.*,a,#hs=e-1,he=e-1 contains=yankringKey
     syn match yankringKey #^AutoClose.*,c,#hs=e-1,he=e-1 contains=yankringKey
+    syn match yankringKey #^AutoClose.*,i,#hs=e-1,he=e-1 contains=yankringKey
     syn match yankringKey #^AutoClose.*,u,#hs=e-1,he=e-1 contains=yankringKey
+    syn match yankringKey #^AutoClose.*,R,#hs=e-1,he=e-1 contains=yankringKey
     syn match yankringKey #^AutoClose.*,q,#hs=e-1,he=e-1 contains=yankringKey
     syn match yankringKey #^AutoClose.*<space>#hs=e-6 contains=yankringKey
     syn match yankringKey #^AutoClose.*?$#hs=e contains=yankringKey
@@ -2498,7 +2501,7 @@ function! s:YRWindowAction(op, cmd_mode) range
     " so set it to at least 1
     let v_count = ((v_count > 0)?(v_count):1)
 
-    if '[dr]' =~ opcode
+    if '\<[drP]\>' =~# opcode
         " Reverse the order of the lines to act on
         let begin = lastline
         while begin >= firstline
