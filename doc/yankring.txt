@@ -493,7 +493,7 @@ variables in your |vimrc|.
 
 The YankRing plugin uses the yankring_n_keys global variable to create 
 a number of defaults maps.  The maps are of the form: >
-    nnoremap Y  :<C-U>YRYankCount 'Y'<CR>
+    nnoremap Y  Y<SNR>_yrrecord
 <
 When capital Y is pressed, the YankRing will execute 'Y' and capture the
 output from Vim.  But there are cases where you do not want the default
@@ -507,20 +507,20 @@ function called YRRunAfterMaps() exists.  If it does, it will call
 this function after it has created the maps.  So in my case, I created
 the following function in my |vimrc|: >
     function! YRRunAfterMaps()
-        nnoremap Y   :<C-U>YRYankCount 'y$'<CR>
+        call YRnmap('Y', 'y$')
     endfunction
 <
 You can do anything you need in this function.  >
-        nnoremap Y   :<C-U>YRYankCount 'y$'<CR>
-<
-This line remaps Y (which the user presses) to the YRYankCount command.  The
-YRYankCount tells Vim to execute y$ instead.
 
-Use YRomap() to customize operator mappings.  Example: map H to be ^:
+Use YRnmap() to customize normal mappings.  Example: map Y to y$:
 
-    function! YRRunAfterMaps()
-        call YRomap('H', '^')
-    endfunction
+    call YRnmap('Y', 'y$')
+
+It remaps Y  to y$ and tells YankRing to update its history.
+
+Use YRomap() to customize operator mappings.  Example: map H to ^:
+
+    call YRomap('H', '^')
 
 3.4 Customizing Menus                            *yankring-custom-menus*
 

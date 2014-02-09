@@ -1690,6 +1690,11 @@ function YRomap(from, to)
     exec 'omap <expr>' a:from 'YRMapsExpression("<SID>", "'. escape(a:to, '\"'). '")'
 endfunction
 
+" For customization in YRRunAfterMaps().
+function YRnmap(from, to)
+    exec 'nmap' a:from a:to."<SID>yrrecord"
+endfunction
+
 " Create the default maps
 function! s:YRMapsCreate(...)
     " 7.1.patch205 introduces the v:operator function which was
