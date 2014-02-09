@@ -516,6 +516,12 @@ You can do anything you need in this function.  >
 This line remaps Y (which the user presses) to the YRYankCount command.  The
 YRYankCount tells Vim to execute y$ instead.
 
+Use YRomap() to customize operator mappings.  Example: map H to be ^:
+
+    function! YRRunAfterMaps()
+        call YRomap('H', '^')
+    endfunction
+
 3.4 Customizing Menus                            *yankring-custom-menus*
 
 There are several global variables which can be created in your vimrc to

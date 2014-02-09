@@ -1685,6 +1685,10 @@ function! s:YRMapsMacro(bang, ...)
     call s:YRMapsCreate('add_only_zap_keys')
 endfunction
 
+" For customization in YRRunAfterMaps().
+function YRomap(from, to)
+    exec 'omap <expr>' a:from 'YRMapsExpression("<SID>", "'. escape(a:to, '\"'). '")'
+endfunction
 
 " Create the default maps
 function! s:YRMapsCreate(...)
