@@ -1,7 +1,7 @@
 *yankring.txt*      For Vim version 7.0. 
 
-Author:	        David Fishburn                             Jnauary 20, 2013
-Version:        17.0
+Author:	        David Fishburn                             September 24, 2013
+Version:        18.0
 
 For instructions on installing this file, type
 	:help add-local-help |add-local-help| inside Vim.
@@ -1230,6 +1230,13 @@ mapping: >
 
 ==============================================================================
 7. History                                       *yankring-history*
+
+  18.0: September 24, 2013
+         NF: Handle the @: command (Lingnan Dai).
+         NF: Added new global option to specify the YankRing buffer name, 
+             g:yankring_buffer_name (Štefan Sakalík).
+         BF: Did not properly highlight new commands in the YankRing 
+             window (Thilo Six).
 
   17.0: April 28, 2013
          NF: The yankring_history_dir option can now take a comma separated
