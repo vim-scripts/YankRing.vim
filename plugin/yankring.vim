@@ -1,16 +1,16 @@
 " yankring.vim - Yank / Delete Ring for Vim
 " ---------------------------------------------------------------
-" Version:       18.0
+" Version:       19.0
 " Author:        David Fishburn <dfishburn dot vim at gmail dot com>
 " Maintainer:    David Fishburn <dfishburn dot vim at gmail dot com>
-" Last Modified: 2013 Sep 19
+" Last Modified: 2015 Jul 27
 " Script:        http://www.vim.org/scripts/script.php?script_id=1234
 " Based On:      Mocked up version by Yegappan Lakshmanan
 "                http://groups.yahoo.com/group/vim/post?act=reply&messageNum=34406
 " License:       GPL (Gnu Public License)
 " GetLatestVimScripts: 1234 1 :AutoInstall: yankring.vim
 
-if exists('loaded_yankring')
+if exists('g:loaded_yankring')
     finish
 endif
 
@@ -19,7 +19,7 @@ if v:version < 700
   finish
 endif
 
-let loaded_yankring = 180
+let g:loaded_yankring = 190
 
 " Turn on support for line continuations when creating the script
 let s:cpo_save = &cpo
@@ -39,7 +39,7 @@ else
             let g:yankring_history_dir = expand(dir)
             break
         endif
-    endfor   
+    endfor
 endif
 
 if !exists('g:yankring_buffer_name')
@@ -364,7 +364,7 @@ endfunction
 " Enables or disables the yankring
 function! s:YRShow(...)
     " Prevent recursion
-    if exists('s:yankring_showing') && s:yankring_showing == 1 
+    if exists('s:yankring_showing') && s:yankring_showing == 1
         " call s:YRWarningMsg('YR: YRShow aborting for recursion')
         return
     endif
@@ -937,7 +937,7 @@ endfunction
 function! YRRecord3(...)
     let register = '"'
 
-    if a:0 > 0 && a:1 != '' 
+    if a:0 > 0 && a:1 != ''
         let register = a:1
     else
         " v:register can be blank in some (unknown) cases
@@ -1318,17 +1318,17 @@ function! s:YRYankRange(do_delete_selection, ...) range
 
     if a:do_delete_selection == 1
         " Save register 0
-        " Register 0 should only be changed by yank operations 
-        " if we are deleting text, this could inadvertently 
+        " Register 0 should only be changed by yank operations
+        " if we are deleting text, this could inadvertently
         " update this register.
         let zero_register = [0, getreg(0), getregtype('0')]
     endif
 
     if cmd_mode == 'v'
         " We are yanking either an entire line, or a range
-        " We want to yank the text first (even in a delete) since 
-        " the rules around which registers get updated are a bit 
-        " complicated.  For deletes, it depends on how large 
+        " We want to yank the text first (even in a delete) since
+        " the rules around which registers get updated are a bit
+        " complicated.  For deletes, it depends on how large
         " the delete is for which registers get updated.
         exec "normal! gv".
                     \ (user_register==default_buffer?'':'"'.user_register).
@@ -1478,7 +1478,7 @@ function! s:YRPaste(replace_last_paste_selection, nextvalue, direction, ...)
         " If the user hits next or previous we want the
         " next item pasted to be the top of the yankring.
         let s:yr_last_paste_idx = 1
-    
+
         let s:yr_paste_dir     = a:direction
         let s:yr_prev_vis_mode = ((cmd_mode=='n') ? 0 : 1)
         return
@@ -1662,7 +1662,7 @@ function! s:YRMapsMacro(bang, ...)
     " after the action of the replay is completed.
     call s:YRMapsDelete('remove_only_zap_keys')
 
-    " Greg Sexton indicated the use of nr2char() removes 
+    " Greg Sexton indicated the use of nr2char() removes
     " a "Press ENTER ..." prompt when executing a macro.
     " let zapto = nr2char(getchar())
     " let zapto = (a:0==0 ? "" : s:YRGetChar())
@@ -2030,7 +2030,7 @@ function! s:YRHistoryDelete()
     let s:yr_count        = 0
 
     if g:yankring_persist != 1
-        return 
+        return
     endif
     let yr_filename       = s:yr_history_file_{s:yr_history_version}
 
@@ -2095,7 +2095,7 @@ function! s:YRHistorySave()
     endif
 
     if g:yankring_persist != 1
-        return 
+        return
     endif
 
     let yr_filename     = s:yr_history_file_{s:yr_history_version}
@@ -2183,23 +2183,25 @@ function! s:YRWindowStatus(show_help)
     if a:show_help == 1 && getline(1) !~ 'selection'
         let full_help = 1
         let msg =
-                    \ '" <enter>      : [p]aste selection'."\n".
-                    \ '" double-click : [p]aste selection'."\n".
-                    \ '" [g]p         : [g][p]aste selection'."\n".
-                    \ '" [g]P         : [g][P]aste selection'."\n".
-                    \ '" 1-9          : Paste # entry from the YankRing (shortcut for speed)'."\n".
-                    \ '" d            : [d]elete item from the YankRing'."\n".
-                    \ '" r            : [p]aste selection in reverse order'."\n".
-                    \ '" s            : [s]earch the yankring for text'."\n".
-                    \ '" u            : [u]pdate display show YankRing'."\n".
-                    \ '" R            : [R]egisters display'."\n".
-                    \ '" a            : toggle [a]utoclose setting'."\n".
-                    \ '" c            : toggle [c]lipboard monitor setting'."\n".
-                    \ '" i            : toggle [i]nsert recording'."\n".
-                    \ '" q            : [q]uit / close the yankring window'."\n".
-                    \ '" ?            : Remove help text'."\n".
-                    \ '" <space>      : toggles the width of the window'."\n".
-                    \ '" Visual mode is supported for above commands'."\n".
+                    \ '" <enter>         : [p]aste selection'."\n".
+                    \ '" double-click    : [p]aste selection'."\n".
+                    \ '" [g]p            : [g][p]aste selection'."\n".
+                    \ '" [g]P            : [g][P]aste selection'."\n".
+                    \ '" 1-9             : Paste # entry from the YankRing (shortcut for speed)'."\n".
+                    \ '" d               : [d]elete item from the YankRing'."\n".
+                    \ '" r               : [p]aste selection in reverse order'."\n".
+                    \ '" s               : [s]earch the yankring for text'."\n".
+                    \ '" u               : [u]pdate display show YankRing'."\n".
+                    \ '" R               : [R]egisters display'."\n".
+                    \ '" a               : toggle [a]utoclose setting'."\n".
+                    \ '" c               : toggle [c]lipboard monitor setting'."\n".
+                    \ '" i               : toggle [i]nsert recording'."\n".
+                    \ '" q               : [q]uit / close the yankring window'."\n".
+                    \ '" ?               : Remove help text'."\n".
+                    \ '" <space>         : toggles the width of the window'."\n".
+                    \ '" AutoClose       : See yankring.txt, yankring_window_auto_close'."\n".
+                    \ '" ClipboardMonitor: See yankring.txt, yankring_clipboard_monitor'."\n".
+                    \ '" Inserts         : See yankring.txt, yankring_record_insert'."\n".
                     \ '" YankRing Version: '.g:loaded_yankring."\n".
                     \ msg
     endif
