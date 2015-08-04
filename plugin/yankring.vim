@@ -1717,7 +1717,7 @@ function! s:YRMapsCreate(...)
     endif
 
     " silent! nmap <expr> @ YRMapsExpression("<SID>", "@", "1")
-    silent! nmap @ :<C-U>YRMapsMacro<CR>
+    silent! nnoremap @ :<C-U>YRMapsMacro<CR>
 
     let s:yr_maps_created_zap = 1
 
