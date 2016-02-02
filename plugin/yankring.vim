@@ -1760,41 +1760,41 @@ function! s:YRMapsCreate(...)
     endif
 
     if g:yankring_v_key != ''
-        exec 'xnoremap <silent>'.g:yankring_v_key." :YRYankRange 'v'<CR>"
+        exec 'xnoremap <unique><silent>'.g:yankring_v_key." :YRYankRange 'v'<CR>"
     endif
     if g:yankring_del_v_key != ''
         for v_map in split(g:yankring_del_v_key)
             if !empty(v_map)
                 try
-                    exec 'xnoremap <silent>'.v_map." :YRDeleteRange 'v'<CR>"
+                    exec 'xnoremap <unique><silent>'.v_map." :YRDeleteRange 'v'<CR>"
                 catch
                 endtry
             endif
         endfor
     endif
     if g:yankring_paste_n_bkey != ''
-        exec 'nnoremap <silent>'.g:yankring_paste_n_bkey." :<C-U>YRPaste 'P'<CR>"
+        exec 'nnoremap <unique><silent>'.g:yankring_paste_n_bkey." :<C-U>YRPaste 'P'<CR>"
         if g:yankring_paste_using_g == 1
-            exec 'nnoremap <silent> g'.g:yankring_paste_n_bkey." :<C-U>YRPaste 'gP'<CR>"
+            exec 'nnoremap <unique><silent> g'.g:yankring_paste_n_bkey." :<C-U>YRPaste 'gP'<CR>"
         endif
     endif
     if g:yankring_paste_n_akey != ''
-        exec 'nnoremap <silent>'.g:yankring_paste_n_akey." :<C-U>YRPaste 'p'<CR>"
+        exec 'nnoremap <unique><silent>'.g:yankring_paste_n_akey." :<C-U>YRPaste 'p'<CR>"
         if g:yankring_paste_using_g == 1
-            exec 'nnoremap <silent> g'.g:yankring_paste_n_akey." :<C-U>YRPaste 'gp'<CR>"
+            exec 'nnoremap <unique><silent> g'.g:yankring_paste_n_akey." :<C-U>YRPaste 'gp'<CR>"
         endif
     endif
     if g:yankring_paste_v_bkey != ''
-        exec 'xnoremap <silent>'.g:yankring_paste_v_bkey." :<C-U>YRPaste 'P', 'v'<CR>"
+        exec 'xnoremap <unique><silent>'.g:yankring_paste_v_bkey." :<C-U>YRPaste 'P', 'v'<CR>"
     endif
     if g:yankring_paste_v_akey != ''
-        exec 'xnoremap <silent>'.g:yankring_paste_v_akey." :<C-U>YRPaste 'p', 'v'<CR>"
+        exec 'xnoremap <unique><silent>'.g:yankring_paste_v_akey." :<C-U>YRPaste 'p', 'v'<CR>"
     endif
     if g:yankring_replace_n_pkey != ''
-        exec 'nnoremap <silent>'.g:yankring_replace_n_pkey." :<C-U>YRReplace '-1', P<CR>"
+        exec 'nnoremap <unique><silent>'.g:yankring_replace_n_pkey." :<C-U>YRReplace '-1', P<CR>"
     endif
     if g:yankring_replace_n_nkey != ''
-        exec 'nnoremap <silent>'.g:yankring_replace_n_nkey." :<C-U>YRReplace '1', p<CR>"
+        exec 'nnoremap <unique><silent>'.g:yankring_replace_n_nkey." :<C-U>YRReplace '1', p<CR>"
     endif
 
     let g:yankring_enabled    = 1
@@ -2812,8 +2812,8 @@ augroup END
 " copy register
 inoremap <script> <SID>YRGetChar <c-r>=YRGetChar()<CR>
 " inoremap <script> <SID>YRGetSearch <c-r>=YRGetSearch()<CR>
-nnoremap <silent> <SID>yrrecord :call YRRecord3()<cr>
-inoremap <silent> <SID>yrrecord <C-R>=YRRecord3()<cr>
+nnoremap <unique><silent> <SID>yrrecord :call YRRecord3()<cr>
+inoremap <unique><silent> <SID>yrrecord <C-R>=YRRecord3()<cr>
 
 
 " Public commands
