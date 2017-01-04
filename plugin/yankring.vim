@@ -1384,7 +1384,6 @@ function! s:YRPaste(replace_last_paste_selection, nextvalue, direction, ...)
 
     let user_register  = s:YRRegister()
     let default_register = ((&clipboard=~'\<unnamed\>')?'*':((&clipboard=~'\<unnamedplus\>' && has('unnamedplus'))?'+':'"'))
-    let default_register = '"'
     let clipboard_default = matchstr( &clipboard, '\<unnamed\w*\>' )
     if has('unnamedplus') && clipboard_default == '\<unnamedplus\>' &&  (v:register == '' || v:register == '"')
         let default_register = '+'
