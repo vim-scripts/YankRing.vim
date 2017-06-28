@@ -1182,27 +1182,19 @@ endfunction
 " Manages the Vim's numbered registers
 function! s:YRSetNumberedReg()
 
-    let i = 0
+    let i = 1
 
     while i <= 10
         if i > s:yr_count
             break
         endif
 
-        call setreg( (i)
-                    \ , s:YRGetValElemNbr((i),'v')
-                    \ , s:YRGetValElemNbr((i),'t')
+        call setreg( (i-1)
+                    \ , s:YRGetValElemNbr((i-1),'v')
+                    \ , s:YRGetValElemNbr((i-1),'t')
                     \ )
         let i += 1
     endwhile
-
-    " There are a few actions that Vim automatically takes
-    " when modifying the numbered registers.
-    " Modifying register 1 - changes the named register.
-    " It is impossible to set register 2 to a value, since Vim will change it.
-
-    " This will at least preserve the default register
-    let @" = @0
 endfunction
 
 
