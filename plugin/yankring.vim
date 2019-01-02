@@ -2872,8 +2872,17 @@ if has("menu") && g:yankring_default_menu_mode != 0
 endif
 
 if g:yankring_enabled == 1
-    " Create YankRing Maps
-    call s:YRMapsCreate()
+  if !exists('##TextYankPost')
+      " Create YankRing Maps
+      call s:YRMapsCreate()
+  else
+      augroup YankRing
+          au! TextYankPost * call s:YRMRUAdd( 's:yr_history_list'
+                      \ , getreg(v:event.regname)
+                      \ , getregtype(v:event.regname)
+                      \ )
+      augroup END
+  endif
 endif
 
 call s:YRInit()
