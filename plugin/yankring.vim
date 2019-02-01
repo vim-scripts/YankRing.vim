@@ -47,7 +47,7 @@ if !exists('g:yankring_buffer_name')
 endif
 
 if !exists('g:yankring_history_file')
-    let g:yankring_history_file = 'yankring_history'
+    let g:yankring_history_file = '.yankring_history'
 endif
 
 " Allow the user to override the # of yanks/deletes recorded
