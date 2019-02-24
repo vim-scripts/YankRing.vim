@@ -1,7 +1,7 @@
 *yankring.txt*      For Vim version 7.0.
 
-Author:	        David Fishburn                             July 27, 2015
-Version:        19.0
+Author:	        David Fishburn                             March 1, 2016
+Version:        20.0
 
 For instructions on installing this file, type
 	:help add-local-help |add-local-help| inside Vim.
@@ -169,6 +169,15 @@ your |.vimrc|.
         option controls whether [gp] and [gP] are also mapped.  Setting this
         option to 0 will not create these maps.  >
             let g:yankring_paste_using_g = 1
+    yankring_paste_visual_reset_default_register
+<       Default: 0
+        Vim's help |put-Visual-mode| indicates when you visually select text 
+        and paste Vim places the replaced text into the default register.
+        This means if you attempt to paste again, you have to use the 
+        YankRing's replace feature.  If in visual mode and pasting from
+        the default register, this option will set the default register
+        back to the value before the paste. >
+            let g:yankring_paste_visual_reset_default_register = 1
     yankring_window_use_separate
 <       Default: 1
         This is a new feature as of the 2.0 release.  The YankRing now uses a
@@ -395,7 +404,7 @@ variables in your |vimrc|.
         Yanks visually select text.   >
     yankring_del_v_key
 <       n - normal mode
-        Default: d
+        Default: d x
         The visually select text is included in the YankRing and deleted. >
     yankring_paste_n_bkey
 <       n - normal mode
@@ -1235,6 +1244,21 @@ mapping: >
 
 ==============================================================================
 7. History                                       *yankring-history*
+
+  20.0: Jnauary 1, 2019
+         NF: YankRing uses new Vim 8.1 TextYankPost event which allows
+             the removal of quite a few normal mode maps.
+         NF: All YankRing maps now use <unique>.  If a mapping already
+             exists Vim will report an error.  Now the user will know
+             if there are conflicts. (tenfyzhong, pull #12)
+         NF: New option g:yankring_paste_visual_reset_default_register 
+             default(0).
+             When in visual mode and we are pasting text from the default
+             register, the default register gets replaced with the 
+             overwritten text.  This option will put the contents that
+             were just pasted back into the default register.
+             This will allow you to paste multiple times in visual mode
+             without having to use the YankRing replace feature.
 
   19.0: July 27, 2015
          NF: Updated documentation displayed in the YankRing window when
